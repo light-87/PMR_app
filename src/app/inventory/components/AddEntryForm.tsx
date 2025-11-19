@@ -1,0 +1,248 @@
+'use client'
+
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { BUCKET_TYPE_LABELS, WAREHOUSE_LABELS } from '@/types'
+import type { BucketType, Warehouse, InventorySummary } from '@/types'
+
+const formSchema = z.object({
+  date: z.string().min(1, 'Date is required'),
+  warehouse: z.enum(['PALLAVI', 'TULARAM']),
+  bucketType: z.enum([
+    'TATA_G', 'TATA_W', 'AL_10_LTR', 'AL', 'BB',
+    'ES', 'MH', 'MH_10_LTR', 'TATA_10_LTR', 'IBC_TANK'
+  ]),
+  action: z.enum(['STOCK', 'SELL']),
+  quantity: z.number().positive('Quantity must be positive'),
+  buyerSeller: z.string().min(1, 'Buyer/Seller name is required'),
+})
+
+type FormData = z.infer<typeof formSchema>
+
+interface AddEntryFormProps {
+  open: boolean
+  onClose: () => void
+  onSuccess: () => void
+  summary: InventorySummary[]
+}
+
+export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryFormProps) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      date: new Date().toISOString().split('T')[0],
+      warehouse: 'TULARAM',
+      action: 'STOCK',
+      quantity: 0,
+      buyerSeller: '',
+    },
+  })
+
+  const selectedWarehouse = watch('warehouse')
+  const selectedBucketType = watch('bucketType')
+  const selectedAction = watch('action')
+
+  // Get current stock for selected bucket+warehouse
+  const getCurrentStock = () => {
+    if (!selectedBucketType || !selectedWarehouse) return 0
+    const row = summary.find(s => s.bucketType === selectedBucketType)
+    if (!row) return 0
+    return selectedWarehouse === 'PALLAVI' ? row.pallavi : row.tularam
+  }
+
+  const onSubmit = async (data: FormData) => {
+    setError('')
+    setLoading(true)
+
+    // Validate stock for selling
+    if (data.action === 'SELL') {
+      const currentStock = getCurrentStock()
+      if (data.quantity > currentStock) {
+        setError(`Cannot sell ${data.quantity}. Only ${currentStock} available in stock.`)
+        setLoading(false)
+        return
+      }
+    }
+
+    try {
+      const response = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        reset()
+        onSuccess()
+        onClose()
+      } else {
+        setError(result.message || 'Failed to add transaction')
+      }
+    } catch {
+      setError('Something went wrong')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClose = () => {
+    reset()
+    setError('')
+    onClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Bucket Transaction</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              {...register('date')}
+            />
+            {errors.date && (
+              <p className="text-destructive text-sm">{errors.date.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Warehouse</Label>
+            <Select
+              value={selectedWarehouse}
+              onValueChange={(value) => setValue('warehouse', value as Warehouse)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select warehouse" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(WAREHOUSE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Bucket Type</Label>
+            <Select
+              value={selectedBucketType}
+              onValueChange={(value) => setValue('bucketType', value as BucketType)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select bucket type" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(BUCKET_TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.bucketType && (
+              <p className="text-destructive text-sm">{errors.bucketType.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Action</Label>
+            <Select
+              value={selectedAction}
+              onValueChange={(value) => setValue('action', value as 'STOCK' | 'SELL')}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select action" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="STOCK">Stock (Add)</SelectItem>
+                <SelectItem value="SELL">Sell (Remove)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="quantity">
+              Quantity
+              {selectedBucketType && selectedWarehouse && (
+                <span className="text-muted-foreground ml-2 text-xs">
+                  (Current stock: {getCurrentStock()})
+                </span>
+              )}
+            </Label>
+            <Input
+              id="quantity"
+              type="number"
+              min={1}
+              {...register('quantity', { valueAsNumber: true })}
+            />
+            {errors.quantity && (
+              <p className="text-destructive text-sm">{errors.quantity.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="buyerSeller">Buyer/Seller Name</Label>
+            <Input
+              id="buyerSeller"
+              {...register('buyerSeller')}
+              placeholder="Enter name"
+            />
+            {errors.buyerSeller && (
+              <p className="text-destructive text-sm">{errors.buyerSeller.message}</p>
+            )}
+          </div>
+
+          {error && (
+            <p className="text-destructive text-sm">{error}</p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Adding...' : 'Add Transaction'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
