@@ -10,4 +10,16 @@ export default defineConfig({
       return process.env.DATABASE_URL!
     },
   },
+
+  studio: {
+    async url() {
+      return process.env.DATABASE_URL!
+    },
+  },
+
+  datasource: {
+    async url() {
+      return process.env.DATABASE_URL!
+    },
+  },
 })
