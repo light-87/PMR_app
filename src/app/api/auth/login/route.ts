@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
+import { triggerBackupIfNeeded } from '@/lib/backup'
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
 
     // Create session
     await createSession(pinRecord.id, pinRecord.role)
+
+    // Trigger backup if needed (non-blocking, runs in background)
+    // This checks if last backup was more than 24 hours ago
+    triggerBackupIfNeeded()
 
     return NextResponse.json({
       success: true,
