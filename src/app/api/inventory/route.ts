@@ -14,6 +14,7 @@ const createInventorySchema = z.object({
   action: z.nativeEnum(ActionType),
   quantity: z.number().positive(),
   buyerSeller: z.string().min(1),
+  forceOversell: z.boolean().optional(), // Allow user to confirm overselling
 })
 
 // GET - Fetch inventory transactions and summary
@@ -92,15 +93,23 @@ export async function POST(request: NextRequest) {
       ? -validatedData.quantity
       : validatedData.quantity
 
-    // Validate stock for selling
+    // Check for overselling (selling more than available stock)
     if (validatedData.action === 'SELL' && validatedData.quantity > currentStock) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Cannot sell ${validatedData.quantity}. Only ${currentStock} available in stock.`
-        },
-        { status: 400 }
-      )
+      // If user hasn't confirmed, return warning
+      if (!validatedData.forceOversell) {
+        return NextResponse.json(
+          {
+            success: false,
+            requiresConfirmation: true,
+            message: `Warning: Selling ${validatedData.quantity} but only ${currentStock} available in stock. This will result in negative inventory (${currentStock - validatedData.quantity}). Do you want to proceed?`,
+            currentStock,
+            requestedQuantity: validatedData.quantity,
+            shortfall: validatedData.quantity - currentStock,
+          },
+          { status: 400 }
+        )
+      }
+      // User confirmed, allow overselling
     }
 
     const newRunningTotal = currentStock + signedQuantity
