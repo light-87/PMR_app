@@ -33,14 +33,25 @@ export function MonthlyBarChart({ data }: MonthlyBarChartProps) {
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis
+                dataKey="month"
+                fontSize={12}
+                stroke="hsl(var(--muted-foreground))"
+              />
               <YAxis
                 fontSize={12}
                 tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                stroke="hsl(var(--muted-foreground))"
               />
               <Tooltip
                 formatter={(value: number) => [`₹${formatCurrency(value)}`, '']}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '0.5rem',
+                  color: 'hsl(var(--card-foreground))'
+                }}
               />
               <Legend />
               <Bar dataKey="income" fill="#22c55e" name="Income" />

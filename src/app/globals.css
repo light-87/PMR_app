@@ -37,6 +37,49 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --info: #3b82f6;
+
+  /* Chart colors */
+  --chart-grid: #E5E5E5;
+  --chart-text: #6B6B6B;
+}
+
+.dark {
+  --background: #0A0A0A;
+  --foreground: #EDEDED;
+
+  --card: #1A1A1A;
+  --card-foreground: #EDEDED;
+
+  --popover: #1A1A1A;
+  --popover-foreground: #EDEDED;
+
+  --primary: #E68A6A;
+  --primary-foreground: #1A1A1A;
+
+  --secondary: #262626;
+  --secondary-foreground: #EDEDED;
+
+  --muted: #262626;
+  --muted-foreground: #A1A1A1;
+
+  --accent: #262626;
+  --accent-foreground: #EDEDED;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #EDEDED;
+
+  --border: #2A2A2A;
+  --input: #2A2A2A;
+  --ring: #E68A6A;
+
+  /* Semantic colors - adjusted for dark mode */
+  --success: #16A34A;
+  --warning: #CA8A04;
+  --info: #2563EB;
+
+  /* Chart colors */
+  --chart-grid: #2A2A2A;
+  --chart-text: #A1A1A1;
 }
 
 body {

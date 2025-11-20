@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 import { Menu, X, LogOut } from 'lucide-react'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export function Header() {
   const pathname = usePathname()
@@ -74,6 +75,8 @@ export function Header() {
               {role.replace('_', ' ')}
             </span>
           )}
+
+          <ThemeToggle />
 
           <Button
             variant="ghost"

@@ -13,14 +13,20 @@ import {
 import { SummaryCards } from './components/SummaryCards'
 import { MonthlyBarChart } from './components/MonthlyBarChart'
 import { MonthlyTable } from './components/MonthlyTable'
+import { CategoryPieChart } from './components/CategoryPieChart'
+import { TopExpensesChart } from './components/TopExpensesChart'
+import { TrendAreaChart } from './components/TrendAreaChart'
+import { BankBreakdownChart } from './components/BankBreakdownChart'
+import { BankFilter } from './components/BankFilter'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
-import type { DashboardResponse } from '@/types'
+import type { DashboardResponse, ExpenseAccount } from '@/types'
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'year' | 'last12months' | 'alltime'>('year')
   const [year, setYear] = useState(new Date().getFullYear())
+  const [selectedBanks, setSelectedBanks] = useState<ExpenseAccount[]>([])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -29,6 +35,10 @@ export default function DashboardPage() {
         view,
         year: year.toString(),
       })
+
+      if (selectedBanks.length > 0) {
+        params.set('banks', selectedBanks.join(','))
+      }
 
       const response = await fetch(`/api/dashboard?${params}`)
       const result = await response.json()
@@ -41,7 +51,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [view, year])
+  }, [view, year, selectedBanks])
 
   useEffect(() => {
     fetchData()
@@ -116,7 +126,41 @@ export default function DashboardPage() {
               netProfit={data.summary.netProfit}
             />
 
-            <MonthlyBarChart data={data.monthlyData} />
+            <BankFilter
+              selectedBanks={selectedBanks}
+              onBanksChange={setSelectedBanks}
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TrendAreaChart data={data.trendData} />
+              <MonthlyBarChart data={data.monthlyData} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <CategoryPieChart
+                data={data.categoryBreakdown}
+                title="Expense Categories"
+              />
+              <CategoryPieChart
+                data={data.incomeCategoryBreakdown}
+                title="Income Categories"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <BankBreakdownChart
+                data={data.accountBreakdown.expense}
+                title="Expense by Bank/Account"
+                type="expense"
+              />
+              <BankBreakdownChart
+                data={data.accountBreakdown.income}
+                title="Income by Bank/Account"
+                type="income"
+              />
+            </div>
+
+            <TopExpensesChart data={data.topExpenses} />
 
             <MonthlyTable data={data.monthlyData} />
           </>

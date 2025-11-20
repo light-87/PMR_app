@@ -111,6 +111,11 @@ export interface AccountBreakdown {
   amount: number
 }
 
+export interface CategoryBreakdown {
+  name: string
+  value: number
+}
+
 export interface DashboardResponse {
   summary: DashboardSummary
   monthlyData: MonthlyData[]
@@ -123,6 +128,9 @@ export interface DashboardResponse {
     income: number
     expense: number
   }[]
+  categoryBreakdown: CategoryBreakdown[]
+  topExpenses: CategoryBreakdown[]
+  incomeCategoryBreakdown: CategoryBreakdown[]
 }
 
 // Statement Types

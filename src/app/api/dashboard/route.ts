@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString())
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
+    const banksParam = searchParams.get('banks')
+    const selectedBanks = banksParam ? banksParam.split(',') : null
 
     // Determine date range based on view
     let startDate: Date
@@ -59,13 +61,14 @@ export async function GET(request: NextRequest) {
       endDate = endOfYear(new Date(year, 0, 1))
     }
 
-    // Fetch all transactions in date range
+    // Fetch all transactions in date range with optional bank filter
     const transactions = await prisma.expenseTransaction.findMany({
       where: {
         date: {
           gte: startDate,
           lte: endDate,
         },
+        ...(selectedBanks && selectedBanks.length > 0 ? { account: { in: selectedBanks } } : {}),
       },
       orderBy: { date: 'asc' },
     })
@@ -144,12 +147,44 @@ export async function GET(request: NextRequest) {
       expense: m.expense,
     }))
 
+    // Category breakdown (by name for expenses)
+    const expenseCategoryMap = new Map<string, number>()
+    transactions.forEach(t => {
+      if (t.type === 'EXPENSE') {
+        const amount = Number(t.amount)
+        expenseCategoryMap.set(t.name, (expenseCategoryMap.get(t.name) || 0) + amount)
+      }
+    })
+
+    const categoryBreakdown = Array.from(expenseCategoryMap.entries())
+      .map(([name, amount]) => ({ name, value: amount }))
+      .sort((a, b) => b.value - a.value)
+
+    // Top expenses
+    const topExpenses = categoryBreakdown.slice(0, 10)
+
+    // Income category breakdown
+    const incomeCategoryMap = new Map<string, number>()
+    transactions.forEach(t => {
+      if (t.type === 'INCOME') {
+        const amount = Number(t.amount)
+        incomeCategoryMap.set(t.name, (incomeCategoryMap.get(t.name) || 0) + amount)
+      }
+    })
+
+    const incomeCategoryBreakdown = Array.from(incomeCategoryMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+
     return NextResponse.json({
       success: true,
       summary,
       monthlyData,
       accountBreakdown,
       trendData,
+      categoryBreakdown,
+      topExpenses,
+      incomeCategoryBreakdown,
     })
   } catch (error) {
     console.error('Dashboard GET error:', error)
