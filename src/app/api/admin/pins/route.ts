@@ -93,7 +93,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update the PIN
-    await prisma.pin.update({
+    await prisma.pin.updateMany({
       where: { role },
       data: { pinNumber: newPin },
     })
