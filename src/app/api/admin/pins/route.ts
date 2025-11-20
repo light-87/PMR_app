@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth'
 import { z } from 'zod'
 import { PinRole } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Fetch all PIN roles (not the actual PINs)
 export async function GET() {
   try {

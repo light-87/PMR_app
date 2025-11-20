@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth'
 import { z } from 'zod'
 import { ExpenseAccount, TransactionType } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 // Validation schema for updating expense transaction
 const updateExpenseSchema = z.object({
   date: z.string().transform(str => new Date(str)).optional(),
