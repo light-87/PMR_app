@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { format, subMonths, startOfYear, endOfYear } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Fetch dashboard analytics
 export async function GET(request: NextRequest) {
   try {

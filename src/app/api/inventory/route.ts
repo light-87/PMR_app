@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth'
 import { z } from 'zod'
 import { BucketType, Warehouse, ActionType } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 // Validation schema for creating inventory transaction
 const createInventorySchema = z.object({
   date: z.string().transform(str => new Date(str)),
