@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Key, Upload } from 'lucide-react'
 import { BackupManager } from './components/BackupManager'
+import { BulkUploadForm } from './components/BulkUploadForm'
 
 export default function AdminPage() {
   const [pins, setPins] = useState({
@@ -121,15 +122,7 @@ export default function AdminPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground text-sm mb-4">
-              Upload an Excel file with two sheets:
-              <br />1. "Inventory" - Date, Warehouse, BucketType, Action, Quantity, BuyerSeller
-              <br />2. "Expenses" - Date, Amount, Account, Type, Name
-            </p>
-            <Button variant="outline" disabled>
-              <Upload className="h-4 w-4 mr-2" />
-              Bulk Upload (Coming Soon)
-            </Button>
+            <BulkUploadForm />
           </CardContent>
         </Card>
 
