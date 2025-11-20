@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Key, Upload, Database } from 'lucide-react'
+import { Key, Upload } from 'lucide-react'
+import { BackupManager } from './components/BackupManager'
 
 export default function AdminPage() {
   const [pins, setPins] = useState({
@@ -132,26 +133,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Backup Manager
-            </CardTitle>
-            <CardDescription>
-              Manual and automatic backups to cloud storage
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm mb-4">
-              Automatic daily backups at 12:00 AM IST to Vercel Blob storage.
-            </p>
-            <Button variant="outline" disabled>
-              <Database className="h-4 w-4 mr-2" />
-              Manual Backup (Coming Soon)
-            </Button>
-          </CardContent>
-        </Card>
+        <BackupManager />
       </div>
     </ProtectedLayout>
   )
