@@ -91,288 +91,252 @@ export default function StatementsPage() {
   }
 
   return (
-    <ProtectedLayout>
+    <>
       <style jsx global>{`
         @media print {
-          .no-print {
-            display: none !important;
+          /* Hide everything by default */
+          body * {
+            visibility: hidden;
           }
 
-          .print-only {
-            display: block !important;
+          /* Only show print content */
+          #print-content,
+          #print-content * {
+            visibility: visible;
+          }
+
+          /* Position print content at top */
+          #print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
           }
 
           @page {
-            margin: 20mm;
+            size: A4;
+            margin: 15mm;
           }
 
           body {
             print-color-adjust: exact;
             -webkit-print-color-adjust: exact;
           }
+        }
 
-          .print-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #000;
-          }
-
-          .print-logo {
-            max-width: 168px;
-            height: auto;
-          }
-
-          .print-contact {
-            text-align: right;
-            font-size: 12px;
-            line-height: 1.6;
-          }
-
-          .print-statement-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 20px 0;
-            text-align: center;
-          }
-
-          .print-customer-info {
-            margin: 20px 0;
-            font-size: 14px;
-          }
-
-          .print-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-          }
-
-          .print-table th,
-          .print-table td {
-            border: 1px solid #000;
-            padding: 8px;
-          }
-
-          .print-table th {
-            background-color: #f0f0f0;
-            font-weight: bold;
-          }
-
-          .print-balance {
-            margin-top: 30px;
-            text-align: right;
-            font-size: 18px;
-            font-weight: bold;
-          }
-
-          .text-green-600 {
-            color: #16a34a !important;
-          }
-
-          .text-red-600 {
-            color: #dc2626 !important;
-          }
+        .screen-only {
+          display: block;
         }
 
         .print-only {
           display: none;
         }
+
+        @media print {
+          .screen-only {
+            display: none;
+          }
+
+          .print-only {
+            display: block;
+          }
+        }
       `}</style>
 
-      <div className="space-y-6">
-        {statement && (
-          <div className="print-only">
-            <div className="print-header">
-              <img src="/logo.png" alt="Company Logo" className="print-logo" />
-              <div className="print-contact">
-                <div><strong>Address:</strong> Pimpalgaon Manegao, Maharashtra</div>
-                <div><strong>Email:</strong> pbgaydhane@gmail.com</div>
-                <div><strong>Phone:</strong> +917030847030</div>
-                <div><strong>Phone:</strong> +917020143332</div>
-              </div>
-            </div>
-
-            <div className="print-statement-title">Customer Statement</div>
-
-            <div className="print-customer-info">
-              <strong>Customer/Vendor:</strong> {selectedName}
-              <br />
-              <strong>Period:</strong> {allTime ? 'All time' : `${startDate || 'Beginning'} to ${endDate || 'Present'}`}
-              <br />
-              <strong>Generated on:</strong> {format(new Date(), 'dd-MMM-yyyy')}
-            </div>
-
-            <table className="print-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '5%' }}>#</th>
-                  <th style={{ width: '20%' }}>Date</th>
-                  <th style={{ width: '20%', textAlign: 'right' }}>Amount</th>
-                  <th style={{ width: '30%' }}>Account</th>
-                  <th style={{ width: '25%', textAlign: 'center' }}>Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {statement.transactions.map((t, index) => (
-                  <tr key={t.id}>
-                    <td>{index + 1}</td>
-                    <td>{format(new Date(t.date), 'dd-MMM-yyyy')}</td>
-                    <td style={{ textAlign: 'right' }} className={t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
-                      ₹{formatCurrency(Number(t.amount))}
-                    </td>
-                    <td>{ACCOUNT_LABELS[t.account]}</td>
-                    <td style={{ textAlign: 'center' }}>{t.type}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className={`print-balance ${statement.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Total Balance: ₹{formatCurrency(Math.abs(statement.totalBalance))}
-              {statement.totalBalance < 0 && ' (Due)'}
+      {/* Print-only content - hidden on screen */}
+      {statement && (
+        <div id="print-content" className="print-only" style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #000' }}>
+            <img src="/logo.png" alt="Company Logo" style={{ maxWidth: '168px', height: 'auto' }} />
+            <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.6' }}>
+              <div><strong>Address:</strong> Pimpalgaon Manegao, Maharashtra</div>
+              <div><strong>Email:</strong> pbgaydhane@gmail.com</div>
+              <div><strong>Phone:</strong> +917030847030</div>
+              <div><strong>Phone:</strong> +917020143332</div>
             </div>
           </div>
-        )}
 
-        <h1 className="text-3xl font-bold no-print">Customer Statements</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '20px 0', textAlign: 'center' }}>Customer Statement</h1>
 
-        <Card className="no-print">
-          <CardHeader>
-            <CardTitle>Generate Statement</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Select Customer/Vendor</Label>
-              <Select value={selectedName} onValueChange={setSelectedName}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select name" />
-                </SelectTrigger>
-                <SelectContent>
-                  {names.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div style={{ margin: '20px 0', fontSize: '14px' }}>
+            <div><strong>Customer/Vendor:</strong> {selectedName}</div>
+            <div><strong>Period:</strong> {allTime ? 'All time' : `${startDate || 'Beginning'} to ${endDate || 'Present'}`}</div>
+            <div><strong>Generated on:</strong> {format(new Date(), 'dd-MMM-yyyy')}</div>
+          </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  id="allTime"
-                  type="checkbox"
-                  checked={allTime}
-                  onChange={(e) => {
-                    setAllTime(e.target.checked)
-                    if (e.target.checked) {
-                      setStartDate('')
-                      setEndDate('')
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-gray-300"
-                />
-                <Label htmlFor="allTime" className="cursor-pointer">
-                  All time
-                </Label>
-              </div>
-            </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', margin: '20px 0' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '5%' }}>#</th>
+                <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '20%' }}>Date</th>
+                <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '20%', textAlign: 'right' }}>Amount</th>
+                <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '30%' }}>Account</th>
+                <th style={{ border: '1px solid #000', padding: '8px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '25%', textAlign: 'center' }}>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {statement.transactions.map((t, index) => (
+                <tr key={t.id}>
+                  <td style={{ border: '1px solid #000', padding: '8px' }}>{index + 1}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px' }}>{format(new Date(t.date), 'dd-MMM-yyyy')}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: t.type === 'INCOME' ? '#16a34a' : '#dc2626' }}>
+                    ₹{formatCurrency(Number(t.amount))}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '8px' }}>{ACCOUNT_LABELS[t.account]}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{t.type}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">From Date (Optional)</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  disabled={allTime}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">To Date (Optional)</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  disabled={allTime}
-                />
-              </div>
-            </div>
+          <div style={{ marginTop: '30px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: statement.totalBalance >= 0 ? '#16a34a' : '#dc2626' }}>
+            Total Balance: ₹{formatCurrency(Math.abs(statement.totalBalance))}
+            {statement.totalBalance < 0 && ' (Due)'}
+          </div>
+        </div>
+      )}
 
-            <Button
-              onClick={handleGenerate}
-              disabled={!selectedName || generating}
-              className="w-full"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              {generating ? 'Generating...' : 'Generate Statement'}
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Screen content */}
+      <ProtectedLayout>
+        <div className="space-y-6 screen-only">
+          <h1 className="text-3xl font-bold">Customer Statements</h1>
 
-        {statement && (
           <Card>
-            <CardHeader className="no-print">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>Statement for: {selectedName}</CardTitle>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Button
-                    onClick={handlePrint}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    Print
-                  </Button>
-                  <div className={`text-right ${statement.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    <p className="text-sm text-muted-foreground">Total Balance</p>
-                    <p className="text-2xl font-bold">
-                      ₹{formatCurrency(Math.abs(statement.totalBalance))}
-                      {statement.totalBalance < 0 && ' (Due)'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <CardHeader>
+              <CardTitle>Generate Statement</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-semibold">#</th>
-                      <th className="text-left p-3 font-semibold">Date</th>
-                      <th className="text-right p-3 font-semibold">Amount</th>
-                      <th className="text-left p-3 font-semibold">Account</th>
-                      <th className="text-center p-3 font-semibold">Type</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {statement.transactions.map((t, index) => (
-                      <tr key={t.id} className="border-b">
-                        <td className="p-3">{index + 1}</td>
-                        <td className="p-3">
-                          {format(new Date(t.date), 'dd-MMM-yyyy')}
-                        </td>
-                        <td className={`text-right p-3 ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
-                          ₹{formatCurrency(Number(t.amount))}
-                        </td>
-                        <td className="p-3">{ACCOUNT_LABELS[t.account]}</td>
-                        <td className="text-center p-3">{t.type}</td>
-                      </tr>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Select Customer/Vendor</Label>
+                <Select value={selectedName} onValueChange={setSelectedName}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select name" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {names.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
                     ))}
-                  </tbody>
-                </table>
+                  </SelectContent>
+                </Select>
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="allTime"
+                    type="checkbox"
+                    checked={allTime}
+                    onChange={(e) => {
+                      setAllTime(e.target.checked)
+                      if (e.target.checked) {
+                        setStartDate('')
+                        setEndDate('')
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="allTime" className="cursor-pointer">
+                    All time
+                  </Label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">From Date (Optional)</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    disabled={allTime}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">To Date (Optional)</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    disabled={allTime}
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                disabled={!selectedName || generating}
+                className="w-full"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {generating ? 'Generating...' : 'Generate Statement'}
+              </Button>
             </CardContent>
           </Card>
-        )}
-      </div>
-    </ProtectedLayout>
+
+          {statement && (
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>Statement for: {selectedName}</CardTitle>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      onClick={handlePrint}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print
+                    </Button>
+                    <div className={`text-right ${statement.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className="text-sm text-muted-foreground">Total Balance</p>
+                      <p className="text-2xl font-bold">
+                        ₹{formatCurrency(Math.abs(statement.totalBalance))}
+                        {statement.totalBalance < 0 && ' (Due)'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-semibold">#</th>
+                        <th className="text-left p-3 font-semibold">Date</th>
+                        <th className="text-right p-3 font-semibold">Amount</th>
+                        <th className="text-left p-3 font-semibold">Account</th>
+                        <th className="text-center p-3 font-semibold">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statement.transactions.map((t, index) => (
+                        <tr key={t.id} className="border-b">
+                          <td className="p-3">{index + 1}</td>
+                          <td className="p-3">
+                            {format(new Date(t.date), 'dd-MMM-yyyy')}
+                          </td>
+                          <td className={`text-right p-3 ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                            ₹{formatCurrency(Number(t.amount))}
+                          </td>
+                          <td className="p-3">{ACCOUNT_LABELS[t.account]}</td>
+                          <td className="text-center p-3">{t.type}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </ProtectedLayout>
+    </>
   )
 }
