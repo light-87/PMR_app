@@ -66,20 +66,10 @@ export async function bulkImportData(data: ParsedExcelData): Promise<ImportResul
         // Calculate signed quantity
         const signedQuantity = row.Action === 'SELL' ? -row.Quantity : row.Quantity
 
-        // Validate stock for selling
-        if (row.Action === 'SELL' && row.Quantity > currentStock) {
-          errors.push({
-            type: 'inventory',
-            row: i + 2, // +2 for Excel row number (1-indexed + header)
-            message: `Cannot sell ${row.Quantity} ${row.BucketType} at ${row.Warehouse}. Only ${currentStock} available in stock.`,
-          })
-          continue // Skip this row but continue processing others
-        }
-
-        // Calculate new running total
+        // Calculate new running total (allow negative stock)
         const newRunningTotal = currentStock + signedQuantity
 
-        // Create the transaction
+        // Create the transaction (allow overselling)
         await prisma.inventoryTransaction.create({
           data: {
             date: row.Date,
