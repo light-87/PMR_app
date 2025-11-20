@@ -22,6 +22,7 @@ export function BackupManager() {
   const [lastBackupDate, setLastBackupDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [backing, setBacking] = useState(false)
+  const [cleaning, setCleaning] = useState(false)
   const [message, setMessage] = useState('')
 
   const fetchBackupLogs = async () => {
@@ -68,6 +69,34 @@ export function BackupManager() {
     }
   }
 
+  const handleCleanFailedBackups = async () => {
+    if (!confirm('Are you sure you want to delete all failed backup logs? This action cannot be undone.')) {
+      return
+    }
+
+    setCleaning(true)
+    setMessage('')
+
+    try {
+      const response = await fetch('/api/admin/backup', {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setMessage(`Successfully deleted ${data.deletedCount} failed backup logs.`)
+        fetchBackupLogs()
+      } else {
+        setMessage(data.message || 'Failed to clean up backups')
+      }
+    } catch (error) {
+      setMessage('Failed to clean up backups')
+    } finally {
+      setCleaning(false)
+    }
+  }
+
   const getStatusIcon = (status: string) => {
     if (status === 'SUCCESS') {
       return <CheckCircle className="h-4 w-4 text-green-500" />
@@ -107,24 +136,47 @@ export function BackupManager() {
           </div>
         )}
 
-        {/* Manual Backup Button */}
-        <Button
-          onClick={handleManualBackup}
-          disabled={backing}
-          className="w-full sm:w-auto"
-        >
-          {backing ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Creating Backup...
-            </>
-          ) : (
-            <>
-              <Database className="h-4 w-4 mr-2" />
-              Create Manual Backup
-            </>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button
+            onClick={handleManualBackup}
+            disabled={backing || cleaning}
+            className="w-full sm:w-auto"
+          >
+            {backing ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Creating Backup...
+              </>
+            ) : (
+              <>
+                <Database className="h-4 w-4 mr-2" />
+                Create Manual Backup
+              </>
+            )}
+          </Button>
+
+          {logs.some(log => log.status === 'FAILED') && (
+            <Button
+              onClick={handleCleanFailedBackups}
+              disabled={backing || cleaning}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              {cleaning ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Cleaning...
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Clean Failed Backups
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
 
         {/* Backup Logs Table */}
         {loading ? (

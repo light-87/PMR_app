@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySession } from '@/lib/auth'
 import { createBackup, getBackupLogs, getLastBackupDate } from '@/lib/backup'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,6 +79,39 @@ export async function POST(request: NextRequest) {
     console.error('Error creating backup:', error)
     return NextResponse.json(
       { success: false, message: 'Failed to create backup' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE: Clean up failed backup logs
+export async function DELETE(request: NextRequest) {
+  try {
+    // Verify admin access
+    const session = await verifySession()
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Delete all failed backup logs
+    const result = await prisma.backupLog.deleteMany({
+      where: {
+        status: 'FAILED',
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: `Deleted ${result.count} failed backup logs`,
+      deletedCount: result.count,
+    })
+  } catch (error) {
+    console.error('Error deleting failed backups:', error)
+    return NextResponse.json(
+      { success: false, message: 'Failed to delete failed backups' },
       { status: 500 }
     )
   }
