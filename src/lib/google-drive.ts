@@ -23,7 +23,7 @@ function validateGoogleDriveConfig(): { valid: boolean; missingVars: string[] } 
 }
 
 // Initialize OAuth2 client for Google Drive API
-function getOAuth2Client() {
+async function getOAuth2Client() {
   // Validate configuration before creating client
   const { valid, missingVars } = validateGoogleDriveConfig()
 
@@ -45,12 +45,27 @@ function getOAuth2Client() {
     refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
   })
 
+  // Test the credentials by getting an access token
+  try {
+    await oauth2Client.getAccessToken()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    throw new Error(
+      `Failed to authenticate with Google Drive. ${errorMessage}. ` +
+      'Please verify your OAuth credentials:\n' +
+      '1. Ensure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET match the credentials used to generate the refresh token\n' +
+      '2. Verify GOOGLE_REFRESH_TOKEN is valid and not expired\n' +
+      '3. Check that the Google Drive API is enabled in your Google Cloud project\n' +
+      'See GOOGLE_DRIVE_SETUP.md for detailed setup instructions.'
+    )
+  }
+
   return oauth2Client
 }
 
 // Get Google Drive instance
-function getDriveClient() {
-  const auth = getOAuth2Client()
+async function getDriveClient() {
+  const auth = await getOAuth2Client()
   return google.drive({ version: 'v3', auth })
 }
 
@@ -61,7 +76,7 @@ export async function uploadBackupToDrive(
   buffer: Buffer,
   fileName: string
 ): Promise<string> {
-  const drive = getDriveClient()
+  const drive = await getDriveClient()
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID
 
   if (!folderId) {
@@ -98,7 +113,7 @@ export async function uploadBackupToDrive(
  * List recent backups from Google Drive
  */
 export async function listBackupsFromDrive(limit: number = 10) {
-  const drive = getDriveClient()
+  const drive = await getDriveClient()
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID
 
   if (!folderId) {
@@ -119,7 +134,7 @@ export async function listBackupsFromDrive(limit: number = 10) {
  * Delete a backup file from Google Drive
  */
 export async function deleteBackupFromDrive(fileId: string): Promise<void> {
-  const drive = getDriveClient()
+  const drive = await getDriveClient()
   await drive.files.delete({ fileId })
 }
 
@@ -127,7 +142,7 @@ export async function deleteBackupFromDrive(fileId: string): Promise<void> {
  * Get backup file download URL
  */
 export async function getBackupDownloadUrl(fileId: string): Promise<string> {
-  const drive = getDriveClient()
+  const drive = await getDriveClient()
 
   const response = await drive.files.get({
     fileId,

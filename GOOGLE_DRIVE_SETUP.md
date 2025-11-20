@@ -146,6 +146,38 @@ GOOGLE_DRIVE_FOLDER_ID="your-folder-id-from-step-5"
 
 ## Troubleshooting
 
+### "No access, refresh token, API key or refresh handler callback is set"
+
+This is the most common error and means the OAuth credentials are not properly configured or the refresh token is invalid.
+
+**Most Common Causes:**
+
+1. **Client ID/Secret mismatch**: The `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in your `.env` file don't match the credentials used to generate the refresh token
+2. **Invalid refresh token**: The refresh token has been revoked, expired, or was copied incorrectly
+3. **Refresh token generated with different credentials**: You used a different Google Cloud project to generate the refresh token
+
+**Solution:**
+
+1. **Verify you're using the same OAuth credentials throughout:**
+   - Go to Google Cloud Console > APIs & Services > Credentials
+   - Note the Client ID and Client Secret for your OAuth 2.0 Client ID
+   - Make sure these EXACT values are in your `.env` file
+
+2. **Regenerate the refresh token using the SAME credentials:**
+   - Go to [OAuth 2.0 Playground](https://developers.google.com/oauthplayground/)
+   - Click the gear icon (⚙️) and check "Use your own OAuth credentials"
+   - Enter the SAME Client ID and Client Secret from your `.env` file
+   - Select scope: `https://www.googleapis.com/auth/drive.file`
+   - Click "Authorize APIs" and sign in
+   - Click "Exchange authorization code for tokens"
+   - Copy the new refresh token to your `.env` file
+
+3. **Ensure no extra spaces or quotes:**
+   - Check your `.env` file has no extra spaces or quotes around the values
+   - Example: `GOOGLE_REFRESH_TOKEN=1//abc123...` (no quotes)
+
+4. **Restart your development server** after updating the `.env` file
+
 ### "unauthorised_client" Error
 
 This error typically means:
