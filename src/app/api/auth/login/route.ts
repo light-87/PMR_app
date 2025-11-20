@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
 import { triggerBackupIfNeeded } from '@/lib/backup'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
