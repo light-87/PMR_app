@@ -175,21 +175,24 @@ export function BulkUploadForm() {
         </ul>
         <p className="font-medium mt-3">Inventory Sheet Columns:</p>
         <ul className="list-disc list-inside ml-2">
-          <li>Date (YYYY-MM-DD or Excel date)</li>
-          <li>Warehouse (PALLAVI or TULARAM)</li>
-          <li>BucketType (TATA_G, TATA_W, AL_10_LTR, AL, BB, ES, MH, MH_10_LTR, TATA_10_LTR, IBC_TANK)</li>
-          <li>Action (STOCK or SELL)</li>
-          <li>Quantity (positive number)</li>
+          <li>Date (DD-MMM-YYYY like "20-Nov-2025", or YYYY-MM-DD, or Excel date)</li>
+          <li>Warehouse (Pallavi or Tularam - case insensitive)</li>
+          <li>BucketType (TATA G, TATA W, AL 10 Ltr, AL, BB, ES, MH, MH 10 Ltr, TATA 10 Ltr, IBC Tank)</li>
+          <li>Action (Stock or Sell - case insensitive)</li>
+          <li>Quantity (number, can be negative for sells)</li>
           <li>BuyerSeller (name of buyer or seller)</li>
         </ul>
         <p className="font-medium mt-3">Expenses Sheet Columns:</p>
         <ul className="list-disc list-inside ml-2">
-          <li>Date (YYYY-MM-DD or Excel date)</li>
-          <li>Amount (positive number)</li>
-          <li>Account (CASH, PRASHANT_GAYDHANE, PMR, KPG_SAVING, KP_ENTERPRISES)</li>
-          <li>Type (INCOME or EXPENSE)</li>
+          <li>Date (DD-MMM-YYYY like "1-Jan-2025", or YYYY-MM-DD, or Excel date)</li>
+          <li>Amount (number with or without ₹ symbol and commas)</li>
+          <li>Account (Cash, Prashant Gaydhane, PMR, KPG Saving, KP Enterprises - case insensitive)</li>
+          <li>Type (Income or Expense - case insensitive)</li>
           <li>Name (vendor or customer name)</li>
         </ul>
+        <p className="text-xs mt-2 italic">
+          Note: The parser automatically normalizes data (removes currency symbols, handles negative quantities, converts dates, etc.)
+        </p>
       </div>
     </div>
   )
