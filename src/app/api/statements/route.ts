@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 // GET - Fetch transactions for a specific customer/vendor
 export async function GET(request: NextRequest) {
   try {
