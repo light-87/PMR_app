@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifySession } from '@/lib/auth'
 import { createBackup, getBackupLogs, getLastBackupDate } from '@/lib/backup'
 
+export const dynamic = 'force-dynamic'
+
 // GET: Fetch backup logs and status
 export async function GET(request: NextRequest) {
   try {
