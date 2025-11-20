@@ -1,7 +1,40 @@
 import { google } from 'googleapis'
 
+/**
+ * Validate that all required Google Drive environment variables are configured
+ */
+function validateGoogleDriveConfig(): { valid: boolean; missingVars: string[] } {
+  const requiredVars = [
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'GOOGLE_REDIRECT_URI',
+    'GOOGLE_REFRESH_TOKEN',
+    'GOOGLE_DRIVE_FOLDER_ID',
+  ]
+
+  const missingVars = requiredVars.filter(
+    (varName) => !process.env[varName] || process.env[varName] === '' || process.env[varName] === 'your-google-client-id' || process.env[varName]?.startsWith('your-')
+  )
+
+  return {
+    valid: missingVars.length === 0,
+    missingVars,
+  }
+}
+
 // Initialize OAuth2 client for Google Drive API
 function getOAuth2Client() {
+  // Validate configuration before creating client
+  const { valid, missingVars } = validateGoogleDriveConfig()
+
+  if (!valid) {
+    throw new Error(
+      `Google Drive is not configured. Missing or invalid environment variables: ${missingVars.join(', ')}. ` +
+      'Please set up Google Drive OAuth credentials in your .env file. ' +
+      'See GOOGLE_DRIVE_SETUP.md for instructions.'
+    )
+  }
+
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,

@@ -144,27 +144,39 @@ export function BackupManager() {
                 </thead>
                 <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id} className="border-t">
-                      <td className="px-3 py-2">
-                        {format(new Date(log.backupDate), 'MMM d, yyyy h:mm a')}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded text-xs ${log.backupType === 'MANUAL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
-                          {log.backupType}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        {log.inventoryCount + log.expenseCount}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(log.status)}
-                          <span className={log.status === 'SUCCESS' ? 'text-green-600' : 'text-red-600'}>
-                            {log.status}
+                    <>
+                      <tr key={log.id} className="border-t">
+                        <td className="px-3 py-2">
+                          {format(new Date(log.backupDate), 'MMM d, yyyy h:mm a')}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`px-2 py-0.5 rounded text-xs ${log.backupType === 'MANUAL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                            {log.backupType}
                           </span>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-3 py-2">
+                          {log.inventoryCount + log.expenseCount}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            {getStatusIcon(log.status)}
+                            <span className={log.status === 'SUCCESS' ? 'text-green-600' : 'text-red-600'}>
+                              {log.status}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                      {log.status === 'FAILED' && log.errorMessage && (
+                        <tr key={`${log.id}-error`} className="border-t bg-red-50">
+                          <td colSpan={4} className="px-3 py-2">
+                            <div className="text-xs text-red-700">
+                              <span className="font-semibold">Error: </span>
+                              {log.errorMessage}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
