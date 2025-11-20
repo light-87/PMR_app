@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Key, Upload } from 'lucide-react'
 import { BackupManager } from './components/BackupManager'
 import { BulkUploadForm } from './components/BulkUploadForm'
+import { DeleteRecentImport } from './components/DeleteRecentImport'
 
 export default function AdminPage() {
   const [pins, setPins] = useState({
@@ -121,7 +122,8 @@ export default function AdminPage() {
               Upload Excel file with Inventory and Expenses data
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <DeleteRecentImport />
             <BulkUploadForm />
           </CardContent>
         </Card>

@@ -145,6 +145,16 @@ export function BulkUploadForm() {
 
   return (
     <div className="space-y-4">
+      {/* Warning about duplicates */}
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Important:</strong> Uploading files will ADD new records to your database.
+          Re-uploading the same data will create duplicates. Use the "Delete Recent Import"
+          feature above if you need to undo an accidental upload.
+        </AlertDescription>
+      </Alert>
+
       {/* Mode Selector */}
       <div className="flex gap-2">
         <Button
