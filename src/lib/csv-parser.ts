@@ -131,7 +131,7 @@ const inventoryRowSchema = z.tuple([
     const num = typeof val === 'string' ? parseFloat(val) : val
     return Math.abs(num) // Column 4: Quantity (absolute value)
   }),
-  z.string().min(1).transform(val => val.trim()), // Column 5: BuyerSeller
+  z.string().transform(val => val.trim() || 'N/A'), // Column 5: BuyerSeller (allow empty)
 ])
 
 const expenseRowSchema = z.tuple([
@@ -139,7 +139,7 @@ const expenseRowSchema = z.tuple([
   z.string().or(z.number()).transform(parseAmount), // Column 1: Amount
   z.string().transform(normalizeAccount), // Column 2: Account
   z.string().transform(normalizeType), // Column 3: Type
-  z.string().min(1).transform(val => val.trim()), // Column 4: Name
+  z.string().transform(val => val.trim() || 'N/A'), // Column 4: Name (allow empty)
 ])
 
 export type InventoryRow = {

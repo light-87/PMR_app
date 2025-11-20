@@ -134,7 +134,7 @@ const inventoryRowSchema = z.object({
     const num = typeof val === 'string' ? parseFloat(val) : val
     return Math.abs(num) // Always use absolute value
   }),
-  BuyerSeller: z.string().min(1).transform(val => val.trim()),
+  BuyerSeller: z.string().transform(val => val.trim() || 'N/A'), // Allow empty
 })
 
 const expenseRowSchema = z.object({
@@ -142,7 +142,7 @@ const expenseRowSchema = z.object({
   Amount: z.number().or(z.string()).transform(parseAmount),
   Account: z.string().transform(normalizeAccount),
   Type: z.string().transform(normalizeType),
-  Name: z.string().min(1).transform(val => val.trim()),
+  Name: z.string().transform(val => val.trim() || 'N/A'), // Allow empty
 })
 
 export type InventoryRow = z.infer<typeof inventoryRowSchema>
