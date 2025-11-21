@@ -37,7 +37,17 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
     expenseCount = expenseTransactions.length
 
     // Fetch all stock transactions (if table exists)
-    let stockTransactions = []
+    let stockTransactions: Array<{
+      id: string
+      date: Date
+      type: string
+      category: string
+      quantity: number
+      unit: string
+      description: string | null
+      runningTotal: number
+      createdAt: Date
+    }> = []
     try {
       stockTransactions = await prisma.stockTransaction.findMany({
         orderBy: { date: 'asc' },
