@@ -17,6 +17,7 @@ export default function InventoryPage() {
   const [summary, setSummary] = useState<InventorySummary[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<InventoryTransaction | null>(null)
   const [searchDate, setSearchDate] = useState<string | null>(null)
   const { role } = useAuthStore()
 
@@ -48,8 +49,8 @@ export default function InventoryPage() {
   }, [fetchData])
 
   const handleEdit = (transaction: InventoryTransaction) => {
-    // TODO: Implement edit modal
-    console.log('Edit transaction:', transaction)
+    setEditingTransaction(transaction)
+    setShowAddForm(true)
   }
 
   const handleDelete = async (id: string) => {
@@ -108,9 +109,13 @@ export default function InventoryPage() {
 
         <AddEntryForm
           open={showAddForm}
-          onClose={() => setShowAddForm(false)}
+          onClose={() => {
+            setShowAddForm(false)
+            setEditingTransaction(null)
+          }}
           onSuccess={fetchData}
           summary={summary}
+          editTransaction={editingTransaction}
         />
       </div>
     </ProtectedLayout>

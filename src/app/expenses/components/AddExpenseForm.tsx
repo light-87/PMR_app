@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -38,13 +38,23 @@ interface AddExpenseFormProps {
   onClose: () => void
   onSuccess: () => void
   uniqueNames: string[]
+  editTransaction?: {
+    id: string
+    date: string
+    amount: number
+    account: string
+    type: string
+    name: string
+  } | null
 }
 
-export function AddExpenseForm({ open, onClose, onSuccess, uniqueNames }: AddExpenseFormProps) {
+export function AddExpenseForm({ open, onClose, onSuccess, uniqueNames, editTransaction }: AddExpenseFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const isEditMode = !!editTransaction
 
   const {
     register,
@@ -67,6 +77,19 @@ export function AddExpenseForm({ open, onClose, onSuccess, uniqueNames }: AddExp
   const selectedAccount = watch('account')
   const selectedType = watch('type')
   const nameValue = watch('name')
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editTransaction) {
+      setValue('date', editTransaction.date.split('T')[0])
+      setValue('amount', editTransaction.amount)
+      setValue('account', editTransaction.account as ExpenseAccount)
+      setValue('type', editTransaction.type as TransactionType)
+      setValue('name', editTransaction.name)
+    } else {
+      reset()
+    }
+  }, [editTransaction, setValue, reset])
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -94,8 +117,12 @@ export function AddExpenseForm({ open, onClose, onSuccess, uniqueNames }: AddExp
     setLoading(true)
 
     try {
-      const response = await fetch('/api/expenses', {
-        method: 'POST',
+      const url = isEditMode
+        ? `/api/expenses/${editTransaction.id}`
+        : '/api/expenses'
+
+      const response = await fetch(url, {
+        method: isEditMode ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
@@ -107,7 +134,7 @@ export function AddExpenseForm({ open, onClose, onSuccess, uniqueNames }: AddExp
         onSuccess()
         onClose()
       } else {
-        setError(result.message || 'Failed to add transaction')
+        setError(result.message || `Failed to ${isEditMode ? 'update' : 'add'} transaction`)
       }
     } catch {
       setError('Something went wrong')
@@ -127,7 +154,7 @@ export function AddExpenseForm({ open, onClose, onSuccess, uniqueNames }: AddExp
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Transaction</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit' : 'Add'} Transaction</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -230,7 +257,10 @@ export function AddExpenseForm({ open, onClose, onSuccess, uniqueNames }: AddExp
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Transaction'}
+              {loading
+                ? (isEditMode ? 'Updating...' : 'Adding...')
+                : (isEditMode ? 'Update Transaction' : 'Add Transaction')
+              }
             </Button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -42,11 +42,22 @@ interface AddEntryFormProps {
   onClose: () => void
   onSuccess: () => void
   summary: InventorySummary[]
+  editTransaction?: {
+    id: string
+    date: string
+    warehouse: string
+    bucketType: string
+    action: string
+    quantity: number
+    buyerSeller: string
+  } | null
 }
 
-export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryFormProps) {
+export function AddEntryForm({ open, onClose, onSuccess, summary, editTransaction }: AddEntryFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const isEditMode = !!editTransaction
 
   const {
     register,
@@ -70,6 +81,20 @@ export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryForm
   const selectedBucketType = watch('bucketType')
   const selectedAction = watch('action')
 
+  // Populate form when editing
+  useEffect(() => {
+    if (editTransaction) {
+      setValue('date', editTransaction.date.split('T')[0])
+      setValue('warehouse', editTransaction.warehouse as Warehouse)
+      setValue('bucketType', editTransaction.bucketType as BucketType)
+      setValue('action', editTransaction.action as 'STOCK' | 'SELL')
+      setValue('quantity', Math.abs(editTransaction.quantity))
+      setValue('buyerSeller', editTransaction.buyerSeller)
+    } else {
+      reset()
+    }
+  }, [editTransaction, setValue, reset])
+
   // Get current stock for selected bucket+warehouse
   const getCurrentStock = () => {
     if (!selectedBucketType || !selectedWarehouse) return 0
@@ -82,8 +107,8 @@ export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryForm
     setError('')
     setLoading(true)
 
-    // Validate stock for selling
-    if (data.action === 'SELL') {
+    // Validate stock for selling (only for new transactions)
+    if (data.action === 'SELL' && !isEditMode) {
       const currentStock = getCurrentStock()
       if (data.quantity > currentStock) {
         setError(`Cannot sell ${data.quantity}. Only ${currentStock} available in stock.`)
@@ -93,8 +118,12 @@ export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryForm
     }
 
     try {
-      const response = await fetch('/api/inventory', {
-        method: 'POST',
+      const url = isEditMode
+        ? `/api/inventory/${editTransaction.id}`
+        : '/api/inventory'
+
+      const response = await fetch(url, {
+        method: isEditMode ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       })
@@ -106,7 +135,7 @@ export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryForm
         onSuccess()
         onClose()
       } else {
-        setError(result.message || 'Failed to add transaction')
+        setError(result.message || `Failed to ${isEditMode ? 'update' : 'add'} transaction`)
       }
     } catch {
       setError('Something went wrong')
@@ -125,7 +154,7 @@ export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryForm
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Bucket Transaction</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit' : 'Add'} Bucket Transaction</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -238,7 +267,10 @@ export function AddEntryForm({ open, onClose, onSuccess, summary }: AddEntryForm
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Transaction'}
+              {loading
+                ? (isEditMode ? 'Updating...' : 'Adding...')
+                : (isEditMode ? 'Update Transaction' : 'Add Transaction')
+              }
             </Button>
           </div>
         </form>
