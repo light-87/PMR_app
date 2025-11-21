@@ -32,12 +32,8 @@ export default function LoginPage() {
         // Store role in Zustand
         setRole(data.role)
 
-        // Redirect based on role
-        if (data.role === 'ADMIN') {
-          router.push('/dashboard')
-        } else {
-          router.push('/inventory')
-        }
+        // Redirect all users to StockBoard as default landing page
+        router.push('/stockboard')
       } else {
         setError(data.message || 'Invalid PIN')
         setPin('')

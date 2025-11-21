@@ -21,6 +21,7 @@ export type BucketType =
   | 'MH_10_LTR'
   | 'TATA_10_LTR'
   | 'IBC_TANK'
+  | 'AP_BLUE'
 
 export type ActionType = 'STOCK' | 'SELL'
 
@@ -174,6 +175,22 @@ export const BUCKET_TYPE_LABELS: Record<BucketType, string> = {
   MH_10_LTR: 'MH 10 Ltr',
   TATA_10_LTR: 'TATA 10 Ltr',
   IBC_TANK: 'IBC tank',
+  AP_BLUE: 'AP Blue',
+}
+
+// Bucket sizes in liters (0 for non-sellable items)
+export const BUCKET_SIZES: Record<BucketType, number> = {
+  TATA_G: 20,
+  TATA_W: 20,
+  AL_10_LTR: 10,
+  AL: 20,
+  BB: 20,
+  ES: 20,
+  MH: 20,
+  MH_10_LTR: 10,
+  TATA_10_LTR: 10,
+  IBC_TANK: 0, // Not counted as sellable product
+  AP_BLUE: 20,
 }
 
 export const ACCOUNT_LABELS: Record<ExpenseAccount, string> = {
@@ -187,4 +204,72 @@ export const ACCOUNT_LABELS: Record<ExpenseAccount, string> = {
 export const WAREHOUSE_LABELS: Record<Warehouse, string> = {
   PALLAVI: 'Pallavi',
   TULARAM: 'Tularam',
+}
+
+// Stock Tracking Types
+export type StockTransactionType =
+  | 'ADD_UREA'
+  | 'PRODUCE_BATCH'
+  | 'SELL_FREE_DEF'
+  | 'FILL_BUCKETS'
+  | 'SELL_BUCKETS'
+
+export type StockCategory = 'UREA' | 'FREE_DEF' | 'FINISHED_GOODS'
+
+export type StockUnit = 'KG' | 'LITERS' | 'BAGS'
+
+export interface StockTransaction {
+  id: string
+  date: string
+  type: StockTransactionType
+  category: StockCategory
+  quantity: number
+  unit: StockUnit
+  description?: string
+  runningTotal: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface StockSummary {
+  ureaKg: number
+  ureaBags: number
+  ureaCansProduceL: number
+  freeDEF: number
+  bucketsInLiters: number
+  finishedGoods: number
+}
+
+export interface StockResponse {
+  transactions: StockTransaction[]
+  summary: StockSummary
+}
+
+export interface StockInput {
+  date: Date
+  type: StockTransactionType
+  category: StockCategory
+  quantity: number
+  unit: StockUnit
+  description?: string
+}
+
+// Stock constants
+export const UREA_PER_BATCH_KG = 360
+export const UREA_BAGS_PER_BATCH = 8
+export const KG_PER_BAG = 45
+export const LITERS_PER_BATCH = 1000
+
+export const STOCK_TYPE_LABELS: Record<StockTransactionType, string> = {
+  ADD_UREA: 'Add Urea',
+  PRODUCE_BATCH: 'Produce Batch',
+  SELL_FREE_DEF: 'Sell Free DEF',
+  FILL_BUCKETS: 'Fill Buckets',
+  SELL_BUCKETS: 'Sell Buckets',
+}
+
+export const STOCK_CATEGORY_LABELS: Record<StockCategory, string> = {
+  UREA: 'Urea (Raw Material)',
+  FREE_DEF: 'Free DEF',
+  FINISHED_GOODS: 'Finished Goods',
 }

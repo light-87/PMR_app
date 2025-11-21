@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
 import { BucketType, Warehouse, ActionType } from '@prisma/client'
+import { BUCKET_SIZES } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -127,6 +128,40 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Auto-update stock tracking (only if StockTransaction table exists)
+    const bucketSize = BUCKET_SIZES[validatedData.bucketType]
+    if (bucketSize > 0) {
+      try {
+        // Check if StockTransaction table exists by attempting to find one record
+        await prisma.stockTransaction.findFirst({ take: 1 })
+
+        if (validatedData.action === 'STOCK') {
+          // Filling buckets: subtract from Free DEF
+          await createStockTransaction({
+            date: validatedData.date,
+            type: 'FILL_BUCKETS',
+            category: 'FREE_DEF',
+            quantity: -(validatedData.quantity * bucketSize),
+            unit: 'LITERS',
+            description: `Filled ${validatedData.quantity}x ${validatedData.bucketType} (${validatedData.quantity * bucketSize}L) at ${validatedData.warehouse}`,
+          })
+        } else if (validatedData.action === 'SELL') {
+          // Selling buckets: subtract from Finished Goods
+          await createStockTransaction({
+            date: validatedData.date,
+            type: 'SELL_BUCKETS',
+            category: 'FINISHED_GOODS',
+            quantity: -(validatedData.quantity * bucketSize),
+            unit: 'LITERS',
+            description: `Sold ${validatedData.quantity}x ${validatedData.bucketType} (${validatedData.quantity * bucketSize}L) to ${validatedData.buyerSeller}`,
+          })
+        }
+      } catch (stockError) {
+        // Table doesn't exist yet or other error - silently skip stock tracking
+        console.log('Stock tracking not available yet (migration pending)')
+      }
+    }
+
     return NextResponse.json({
       success: true,
       transaction,
@@ -189,4 +224,37 @@ async function calculateStockSummary() {
   }
 
   return summary
+}
+
+// Helper function to create stock transaction
+async function createStockTransaction(data: {
+  date: Date
+  type: 'FILL_BUCKETS' | 'SELL_BUCKETS'
+  category: 'FREE_DEF' | 'FINISHED_GOODS'
+  quantity: number
+  unit: 'LITERS'
+  description: string
+}) {
+  // Get current stock for this category
+  const lastTransaction = await prisma.stockTransaction.findFirst({
+    where: { category: data.category },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { runningTotal: true },
+  })
+
+  const currentStock = lastTransaction?.runningTotal || 0
+  const newRunningTotal = currentStock + data.quantity
+
+  // Create stock transaction
+  await prisma.stockTransaction.create({
+    data: {
+      date: data.date,
+      type: data.type,
+      category: data.category,
+      quantity: data.quantity,
+      unit: data.unit,
+      description: data.description,
+      runningTotal: newRunningTotal,
+    },
+  })
 }
