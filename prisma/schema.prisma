@@ -68,11 +68,53 @@ enum BucketType {
   MH_10_LTR
   TATA_10_LTR
   IBC_TANK
+  AP_BLUE
 }
 
 enum ActionType {
   STOCK
   SELL
+}
+
+// ============================================
+// STOCK TRACKING MODULE
+// ============================================
+
+model StockTransaction {
+  id              String               @id @default(cuid())
+  date            DateTime
+  type            StockTransactionType
+  category        StockCategory
+  quantity        Float                // Can be negative for consumption
+  unit            StockUnit
+  description     String?
+  runningTotal    Float
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([date])
+  @@index([type])
+  @@index([category])
+}
+
+enum StockTransactionType {
+  ADD_UREA       // Adding raw material
+  PRODUCE_BATCH  // Production: Urea → Free DEF
+  SELL_FREE_DEF  // Selling loose DEF
+  FILL_BUCKETS   // Auto: when STOCK bucket in inventory
+  SELL_BUCKETS   // Auto: when SELL bucket in inventory
+}
+
+enum StockCategory {
+  UREA           // Raw material
+  FREE_DEF       // Finished goods (loose)
+  FINISHED_GOODS // Total finished (Free DEF + Buckets)
+}
+
+enum StockUnit {
+  KG
+  LITERS
+  BAGS
 }
 
 // ============================================
