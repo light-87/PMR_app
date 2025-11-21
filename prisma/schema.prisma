@@ -55,6 +55,7 @@ model InventoryTransaction {
 enum Warehouse {
   PALLAVI
   TULARAM
+  FACTORY
 }
 
 enum BucketType {
@@ -69,6 +70,7 @@ enum BucketType {
   TATA_10_LTR
   IBC_TANK
   AP_BLUE
+  FREE_DEF
 }
 
 enum ActionType {
