@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { format, subMonths, startOfYear, endOfYear } from 'date-fns'
+import type { ExpenseAccount } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
     const accountsParam = searchParams.get('accounts')
-    const selectedAccounts = accountsParam ? accountsParam.split(',') : null
+    const selectedAccounts = accountsParam ? accountsParam.split(',') as ExpenseAccount[] : null
 
     // Determine date range based on view
     let startDate: Date
