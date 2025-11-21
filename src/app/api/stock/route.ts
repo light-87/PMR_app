@@ -100,14 +100,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Only admins and expense_inventory can modify stock
-    if (session.role !== 'ADMIN' && session.role !== 'EXPENSE_INVENTORY') {
-      return NextResponse.json(
-        { success: false, message: 'Access denied' },
-        { status: 403 }
-      )
-    }
-
     // Check if table exists first
     try {
       await prisma.stockTransaction.findFirst({ take: 1 })
@@ -120,6 +112,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const validatedData = createStockSchema.parse(body)
+
+    // Permission check based on transaction type
+    // ADD_UREA and PRODUCE_BATCH: Only ADMIN and EXPENSE_INVENTORY
+    // SELL_FREE_DEF: All authenticated users
+    // FILL_BUCKETS and SELL_BUCKETS: Auto-triggered (all users)
+    if (validatedData.type === 'ADD_UREA' || validatedData.type === 'PRODUCE_BATCH') {
+      if (session.role !== 'ADMIN' && session.role !== 'EXPENSE_INVENTORY') {
+        return NextResponse.json(
+          { success: false, message: 'Access denied. Only admins and expense managers can perform this action.' },
+          { status: 403 }
+        )
+      }
+    }
 
     // Handle different transaction types
     if (validatedData.type === 'PRODUCE_BATCH') {

@@ -25,7 +25,6 @@ export default function InventoryPage() {
   const { role } = useAuthStore()
 
   const isAdmin = role === 'ADMIN'
-  const canSellFreeDEF = role === 'ADMIN' || role === 'EXPENSE_INVENTORY'
 
   const fetchData = useCallback(async () => {
     try {
@@ -42,20 +41,18 @@ export default function InventoryPage() {
         setSummary(data.summary)
       }
 
-      // Fetch stock data for Free DEF (for users who can sell Free DEF)
-      if (canSellFreeDEF) {
-        const stockResponse = await fetch('/api/stock')
-        const stockData = await stockResponse.json()
-        if (stockData.success && stockData.summary) {
-          setFreeDEFStock(stockData.summary.freeDEF || 0)
-        }
+      // Fetch stock data for Free DEF (all users can sell Free DEF)
+      const stockResponse = await fetch('/api/stock')
+      const stockData = await stockResponse.json()
+      if (stockData.success && stockData.summary) {
+        setFreeDEFStock(stockData.summary.freeDEF || 0)
       }
     } catch (error) {
       console.error('Failed to fetch inventory:', error)
     } finally {
       setLoading(false)
     }
-  }, [searchDate, canSellFreeDEF])
+  }, [searchDate])
 
   useEffect(() => {
     fetchData()
@@ -102,15 +99,13 @@ export default function InventoryPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Inventory Management</h1>
           <div className="flex gap-2">
-            {canSellFreeDEF && (
-              <Button
-                onClick={() => setShowSellFreeDEFForm(true)}
-                variant="destructive"
-              >
-                <TrendingDown className="h-4 w-4 mr-2" />
-                Sell Free DEF
-              </Button>
-            )}
+            <Button
+              onClick={() => setShowSellFreeDEFForm(true)}
+              variant="destructive"
+            >
+              <TrendingDown className="h-4 w-4 mr-2" />
+              Sell Free DEF
+            </Button>
             <Button onClick={() => setShowAddForm(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Entry
