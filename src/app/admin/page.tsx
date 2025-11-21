@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Key, Upload } from 'lucide-react'
 import { BackupManager } from './components/BackupManager'
+import { RestoreManager } from './components/RestoreManager'
 import { BulkUploadForm } from './components/BulkUploadForm'
 import { DeleteRecentImport } from './components/DeleteRecentImport'
 
@@ -129,6 +130,8 @@ export default function AdminPage() {
         </Card>
 
         <BackupManager />
+
+        <RestoreManager />
       </div>
     </ProtectedLayout>
   )

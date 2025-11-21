@@ -104,6 +104,25 @@ export async function getBackupDownloadUrl(fileId: string): Promise<string> {
   return response.data.webContentLink || ''
 }
 
+/**
+ * Download a backup file from Google Drive as a Buffer
+ */
+export async function downloadBackupFromDrive(fileId: string): Promise<Buffer> {
+  const drive = getDriveClient()
+
+  const response = await drive.files.get(
+    {
+      fileId,
+      alt: 'media',
+    },
+    {
+      responseType: 'arraybuffer',
+    }
+  )
+
+  return Buffer.from(response.data as ArrayBuffer)
+}
+
 // Helper function to convert Buffer to ReadableStream
 function bufferToStream(buffer: Buffer) {
   const { Readable } = require('stream')
