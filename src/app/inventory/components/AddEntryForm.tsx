@@ -25,10 +25,10 @@ import type { BucketType, Warehouse, InventorySummary } from '@/types'
 
 const formSchema = z.object({
   date: z.string().min(1, 'Date is required'),
-  warehouse: z.enum(['PALLAVI', 'TULARAM']),
+  warehouse: z.enum(['PALLAVI', 'TULARAM', 'FACTORY']),
   bucketType: z.enum([
     'TATA_G', 'TATA_W', 'AL_10_LTR', 'AL', 'BB',
-    'ES', 'MH', 'MH_10_LTR', 'TATA_10_LTR', 'IBC_TANK', 'AP_BLUE'
+    'ES', 'MH', 'MH_10_LTR', 'TATA_10_LTR', 'IBC_TANK', 'AP_BLUE', 'FREE_DEF'
   ]),
   action: z.enum(['STOCK', 'SELL']),
   quantity: z.number().positive('Quantity must be positive'),
@@ -98,6 +98,8 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
   // Get current stock for selected bucket+warehouse
   const getCurrentStock = () => {
     if (!selectedBucketType || !selectedWarehouse) return 0
+    // FACTORY warehouse doesn't have stock tracking in summary
+    if (selectedWarehouse === 'FACTORY') return 0
     const row = summary.find(s => s.bucketType === selectedBucketType)
     if (!row) return 0
     return selectedWarehouse === 'PALLAVI' ? row.pallavi : row.tularam
@@ -154,7 +156,12 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? 'Edit' : 'Add'} Bucket Transaction</DialogTitle>
+          <DialogTitle>
+            {isEditMode && editTransaction?.warehouse === 'FACTORY'
+              ? 'View Factory Transaction (Read-Only)'
+              : `${isEditMode ? 'Edit' : 'Add'} Bucket Transaction`
+            }
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -163,6 +170,7 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
               id="date"
               type="date"
               {...register('date')}
+              disabled={isEditMode && editTransaction?.warehouse === 'FACTORY'}
             />
             {errors.date && (
               <p className="text-destructive text-sm">{errors.date.message}</p>
@@ -174,18 +182,28 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
             <Select
               value={selectedWarehouse}
               onValueChange={(value) => setValue('warehouse', value as Warehouse)}
+              disabled={isEditMode && editTransaction?.warehouse === 'FACTORY'}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select warehouse" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(WAREHOUSE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
+                {Object.entries(WAREHOUSE_LABELS).map(([value, label]) => {
+                  // Hide FACTORY for new transactions (auto-created only)
+                  if (value === 'FACTORY' && !isEditMode) return null
+                  return (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
+            {isEditMode && editTransaction?.warehouse === 'FACTORY' && (
+              <p className="text-xs text-muted-foreground">
+                Factory transactions are auto-created and cannot be edited
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -193,16 +211,21 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
             <Select
               value={selectedBucketType}
               onValueChange={(value) => setValue('bucketType', value as BucketType)}
+              disabled={isEditMode && editTransaction?.bucketType === 'FREE_DEF'}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select bucket type" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(BUCKET_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
+                {Object.entries(BUCKET_TYPE_LABELS).map(([value, label]) => {
+                  // Hide FREE_DEF for new transactions (auto-created only)
+                  if (value === 'FREE_DEF' && !isEditMode) return null
+                  return (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
             {errors.bucketType && (
@@ -215,6 +238,7 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
             <Select
               value={selectedAction}
               onValueChange={(value) => setValue('action', value as 'STOCK' | 'SELL')}
+              disabled={isEditMode && editTransaction?.warehouse === 'FACTORY'}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select action" />
@@ -229,7 +253,7 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
           <div className="space-y-2">
             <Label htmlFor="quantity">
               Quantity
-              {selectedBucketType && selectedWarehouse && (
+              {selectedBucketType && selectedWarehouse && selectedWarehouse !== 'FACTORY' && (
                 <span className="text-muted-foreground ml-2 text-xs">
                   (Current stock: {getCurrentStock()})
                 </span>
@@ -240,6 +264,7 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
               type="number"
               min={1}
               {...register('quantity', { valueAsNumber: true })}
+              disabled={isEditMode && editTransaction?.warehouse === 'FACTORY'}
             />
             {errors.quantity && (
               <p className="text-destructive text-sm">{errors.quantity.message}</p>
@@ -252,6 +277,7 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
               id="buyerSeller"
               {...register('buyerSeller')}
               placeholder="Enter name"
+              disabled={isEditMode && editTransaction?.warehouse === 'FACTORY'}
             />
             {errors.buyerSeller && (
               <p className="text-destructive text-sm">{errors.buyerSeller.message}</p>
@@ -264,14 +290,16 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
+              {isEditMode && editTransaction?.warehouse === 'FACTORY' ? 'Close' : 'Cancel'}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading
-                ? (isEditMode ? 'Updating...' : 'Adding...')
-                : (isEditMode ? 'Update Transaction' : 'Add Transaction')
-              }
-            </Button>
+            {!(isEditMode && editTransaction?.warehouse === 'FACTORY') && (
+              <Button type="submit" disabled={loading}>
+                {loading
+                  ? (isEditMode ? 'Updating...' : 'Adding...')
+                  : (isEditMode ? 'Update Transaction' : 'Add Transaction')
+                }
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>
