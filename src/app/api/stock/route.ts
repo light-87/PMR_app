@@ -356,7 +356,7 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
           bucketType: 'FREE_DEF',
           action: 'SELL',
           quantity: Math.abs(data.quantity), // Store as positive liters for display
-          buyerSeller: data.description?.replace('Sold ', '').replace('L Free DEF to ', '') || 'Customer',
+          buyerSeller: data.description?.split(' to ').pop()?.trim() || 'Customer',
           runningTotal: newInventoryRunningTotal,
         },
       }),
