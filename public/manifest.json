@@ -10,9 +10,8 @@
   "icons": [
     {
       "src": "/logo.png",
-      "sizes": "any",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "168x102",
+      "type": "image/png"
     }
   ],
   "categories": ["business", "productivity", "finance"],
