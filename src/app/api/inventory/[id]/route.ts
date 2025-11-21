@@ -143,12 +143,75 @@ export async function DELETE(
       )
     }
 
-    // Delete transaction
+    // If this is a FACTORY + FREE_DEF transaction (from Sell Free DEF),
+    // we need to also delete the corresponding StockTransactions
+    if (transaction.warehouse === 'FACTORY' && transaction.bucketType === 'FREE_DEF' && transaction.action === 'SELL') {
+      try {
+        // Find and delete corresponding StockTransactions by matching date and quantity
+        // When selling Free DEF, we created 2 StockTransactions:
+        // 1. SELL_FREE_DEF for FREE_DEF category (negative quantity)
+        // 2. SELL_FREE_DEF for FINISHED_GOODS category (negative quantity)
+        const stockTransactionsToDelete = await prisma.stockTransaction.findMany({
+          where: {
+            date: transaction.date,
+            type: 'SELL_FREE_DEF',
+            quantity: -Math.abs(transaction.quantity), // Stock uses negative for sells
+          },
+        })
+
+        // Delete the StockTransactions
+        for (const st of stockTransactionsToDelete) {
+          await prisma.stockTransaction.delete({ where: { id: st.id } })
+        }
+
+        // Recalculate StockTransaction running totals for affected categories
+        await recalculateStockRunningTotals('FREE_DEF')
+        await recalculateStockRunningTotals('FINISHED_GOODS')
+      } catch (stockError) {
+        console.error('Failed to delete/recalculate stock transactions:', stockError)
+        // Continue anyway - at least delete the inventory transaction
+      }
+    }
+
+    // If this is a regular bucket transaction, delete corresponding StockTransactions
+    const bucketSize = await getBucketSize(transaction.bucketType)
+    if (bucketSize > 0) {
+      try {
+        // Find StockTransactions created when this inventory transaction was made
+        const stockType = transaction.action === 'STOCK' ? 'FILL_BUCKETS' : 'SELL_BUCKETS'
+        const stockCategory = transaction.action === 'STOCK' ? 'FREE_DEF' : 'FINISHED_GOODS'
+        const expectedQuantity = transaction.action === 'STOCK'
+          ? -(Math.abs(transaction.quantity) * bucketSize)
+          : -(Math.abs(transaction.quantity) * bucketSize)
+
+        const stockTransactionsToDelete = await prisma.stockTransaction.findMany({
+          where: {
+            date: transaction.date,
+            type: stockType,
+            category: stockCategory,
+            quantity: expectedQuantity,
+          },
+        })
+
+        // Delete the StockTransactions
+        for (const st of stockTransactionsToDelete) {
+          await prisma.stockTransaction.delete({ where: { id: st.id } })
+        }
+
+        // Recalculate StockTransaction running totals for affected category
+        await recalculateStockRunningTotals(stockCategory)
+      } catch (stockError) {
+        console.error('Failed to delete/recalculate stock transactions:', stockError)
+        // Continue anyway
+      }
+    }
+
+    // Delete the inventory transaction
     await prisma.inventoryTransaction.delete({
       where: { id },
     })
 
-    // Recalculate running totals
+    // Recalculate inventory running totals
     await recalculateRunningTotals(transaction.bucketType, transaction.warehouse)
 
     return NextResponse.json({
@@ -184,4 +247,48 @@ async function recalculateRunningTotals(
       data: { runningTotal },
     })
   }
+}
+
+// Helper function to recalculate StockTransaction running totals for a category
+async function recalculateStockRunningTotals(
+  category: 'FREE_DEF' | 'FINISHED_GOODS' | 'RAW_MATERIALS'
+) {
+  try {
+    // Get all transactions for this category, ordered by date
+    const transactions = await prisma.stockTransaction.findMany({
+      where: { category },
+      orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+    })
+
+    // Recalculate running totals
+    let runningTotal = 0
+    for (const transaction of transactions) {
+      runningTotal += transaction.quantity
+      await prisma.stockTransaction.update({
+        where: { id: transaction.id },
+        data: { runningTotal },
+      })
+    }
+  } catch (error) {
+    console.error(`Failed to recalculate stock running totals for ${category}:`, error)
+  }
+}
+
+// Helper function to get bucket size
+async function getBucketSize(bucketType: BucketType): Promise<number> {
+  const BUCKET_SIZES: Record<BucketType, number> = {
+    TATA_G: 50,
+    TATA_W: 50,
+    AL_10_LTR: 10,
+    AL: 50,
+    BB: 50,
+    ES: 50,
+    MH: 50,
+    MH_10_LTR: 10,
+    TATA_10_LTR: 10,
+    IBC_TANK: 0,
+    AP_BLUE: 20,
+    FREE_DEF: 0,
+  }
+  return BUCKET_SIZES[bucketType] || 0
 }
