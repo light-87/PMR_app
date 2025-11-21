@@ -402,10 +402,12 @@ async function getCurrentStock(category: StockCategory): Promise<number> {
 async function calculateStockSummary() {
   const ureaKg = await getCurrentStock(StockCategory.UREA)
   const freeDEF = await getCurrentStock(StockCategory.FREE_DEF)
-  const finishedGoods = await getCurrentStock(StockCategory.FINISHED_GOODS)
 
   // Calculate buckets in liters from inventory
   const bucketsInLiters = await calculateBucketsInLiters()
+
+  // Finished Goods = Free DEF (loose) + In Buckets (liters)
+  const finishedGoods = freeDEF + bucketsInLiters
 
   return {
     ureaKg,
