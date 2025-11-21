@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
-import { BucketType, Warehouse, ActionType } from '@prisma/client'
+import { BucketType, Warehouse, ActionType, StockCategory } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -251,7 +251,7 @@ async function recalculateRunningTotals(
 
 // Helper function to recalculate StockTransaction running totals for a category
 async function recalculateStockRunningTotals(
-  category: 'FREE_DEF' | 'FINISHED_GOODS' | 'RAW_MATERIALS'
+  category: StockCategory
 ) {
   try {
     // Get all transactions for this category, ordered by date
