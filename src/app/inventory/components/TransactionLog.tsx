@@ -22,24 +22,24 @@ export function TransactionLog({
   onDelete,
 }: TransactionLogProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Transaction Log</CardTitle>
+    <Card className="border-2 border-blue-200 shadow-lg">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardTitle className="text-blue-800">Transaction Log</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left p-3 font-semibold">Date</th>
-                <th className="text-left p-3 font-semibold">Warehouse</th>
-                <th className="text-left p-3 font-semibold">Bucket Type</th>
-                <th className="text-center p-3 font-semibold">Action</th>
-                <th className="text-center p-3 font-semibold">Quantity</th>
-                <th className="text-left p-3 font-semibold">Buyer/Seller</th>
-                <th className="text-center p-3 font-semibold">Running Total</th>
+              <tr className="border-b-2 bg-gradient-to-r from-slate-100 to-slate-200">
+                <th className="text-left p-3 font-semibold text-slate-700">Date</th>
+                <th className="text-left p-3 font-semibold text-slate-700">Warehouse</th>
+                <th className="text-left p-3 font-semibold text-slate-700">Bucket Type</th>
+                <th className="text-center p-3 font-semibold text-slate-700">Action</th>
+                <th className="text-center p-3 font-semibold text-slate-700">Quantity</th>
+                <th className="text-left p-3 font-semibold text-slate-700">Buyer/Seller</th>
+                <th className="text-center p-3 font-semibold text-slate-700">Running Total</th>
                 {isAdmin && (
-                  <th className="text-center p-3 font-semibold">Actions</th>
+                  <th className="text-center p-3 font-semibold text-slate-700">Actions</th>
                 )}
               </tr>
             </thead>
@@ -58,10 +58,10 @@ export function TransactionLog({
                   <tr
                     key={transaction.id}
                     className={cn(
-                      'border-b hover:bg-muted/30',
+                      'border-b transition-colors duration-150',
                       transaction.action === 'STOCK'
-                        ? 'bg-green-50/50'
-                        : 'bg-red-50/50'
+                        ? 'bg-green-50 hover:bg-green-100'
+                        : 'bg-red-50 hover:bg-red-100'
                     )}
                   >
                     <td className="p-3">
@@ -76,21 +76,23 @@ export function TransactionLog({
                     <td className="text-center p-3">
                       <span
                         className={cn(
-                          'px-2 py-1 rounded text-xs font-medium',
+                          'px-3 py-1 rounded-full text-xs font-bold shadow-sm',
                           transaction.action === 'STOCK'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-red-500 text-white'
                         )}
                       >
                         {transaction.action}
                       </span>
                     </td>
-                    <td className="text-center p-3 font-medium">
+                    <td className="text-center p-3 font-bold text-slate-700">
                       {Math.abs(transaction.quantity)}
                     </td>
-                    <td className="p-3">{transaction.buyerSeller}</td>
-                    <td className="text-center p-3 font-semibold">
-                      {transaction.runningTotal}
+                    <td className="p-3 text-slate-600">{transaction.buyerSeller}</td>
+                    <td className="text-center p-3">
+                      <span className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
+                        {transaction.runningTotal}
+                      </span>
                     </td>
                     {isAdmin && (
                       <td className="text-center p-3">

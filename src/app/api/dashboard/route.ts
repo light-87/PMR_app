@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString())
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
+    const accountsParam = searchParams.get('accounts')
+    const selectedAccounts = accountsParam ? accountsParam.split(',') : null
 
     // Determine date range based on view
     let startDate: Date
@@ -66,6 +68,9 @@ export async function GET(request: NextRequest) {
           gte: startDate,
           lte: endDate,
         },
+        ...(selectedAccounts && selectedAccounts.length > 0
+          ? { account: { in: selectedAccounts } }
+          : {}),
       },
       orderBy: { date: 'asc' },
     })
