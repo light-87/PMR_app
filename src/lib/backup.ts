@@ -11,6 +11,7 @@ interface BackupResult {
   driveFileId?: string
   inventoryCount: number
   expenseCount: number
+  stockCount: number
   errorMessage?: string
 }
 
@@ -20,6 +21,7 @@ interface BackupResult {
 export async function createBackup(type: BackupType): Promise<BackupResult> {
   let inventoryCount = 0
   let expenseCount = 0
+  let stockCount = 0
 
   try {
     // Fetch all inventory transactions
@@ -33,6 +35,17 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       orderBy: { date: 'asc' },
     })
     expenseCount = expenseTransactions.length
+
+    // Fetch all stock transactions (if table exists)
+    let stockTransactions = []
+    try {
+      stockTransactions = await prisma.stockTransaction.findMany({
+        orderBy: { date: 'asc' },
+      })
+      stockCount = stockTransactions.length
+    } catch (stockError) {
+      console.log('Stock tracking not available yet in backup')
+    }
 
     // Create Excel workbook
     const workbook = XLSX.utils.book_new()
@@ -65,6 +78,23 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
     const expenseSheet = XLSX.utils.json_to_sheet(expenseData)
     XLSX.utils.book_append_sheet(workbook, expenseSheet, 'Expenses')
 
+    // Create Stock sheet (if stock transactions exist)
+    if (stockTransactions.length > 0) {
+      const stockData = stockTransactions.map((tx) => ({
+        ID: tx.id,
+        Date: format(new Date(tx.date), 'yyyy-MM-dd'),
+        Type: tx.type,
+        Category: tx.category,
+        Quantity: tx.quantity,
+        Unit: tx.unit,
+        Description: tx.description || '',
+        'Running Total': tx.runningTotal,
+        'Created At': format(new Date(tx.createdAt), 'yyyy-MM-dd HH:mm:ss'),
+      }))
+      const stockSheet = XLSX.utils.json_to_sheet(stockData)
+      XLSX.utils.book_append_sheet(workbook, stockSheet, 'Stock')
+    }
+
     // Generate Excel buffer
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
 
@@ -82,6 +112,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
         driveFileId,
         inventoryCount,
         expenseCount,
+        stockCount,
         status: 'SUCCESS',
       },
     })
@@ -92,6 +123,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       driveFileId,
       inventoryCount,
       expenseCount,
+      stockCount,
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -102,6 +134,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
         backupType: type,
         inventoryCount,
         expenseCount,
+        stockCount,
         status: 'FAILED',
         errorMessage,
       },
@@ -111,6 +144,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       success: false,
       inventoryCount,
       expenseCount,
+      stockCount,
       errorMessage,
     }
   }

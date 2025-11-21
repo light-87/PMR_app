@@ -15,6 +15,7 @@ const createStockSchema = z.object({
   quantity: z.number(),
   unit: z.nativeEnum(StockUnit),
   description: z.string().optional(),
+  batchCount: z.number().optional(),
 })
 
 // GET - Fetch stock transactions and summary
@@ -154,25 +155,29 @@ export async function POST(request: NextRequest) {
 
 // Handle production batch (Urea → Free DEF)
 async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
+  const batchCount = data.batchCount || 1
+  const totalUreaNeeded = UREA_PER_BATCH_KG * batchCount
+  const totalLitersProduced = LITERS_PER_BATCH * batchCount
+
   // Check if enough Urea is available
   const ureaStock = await getCurrentStock(StockCategory.UREA)
-  if (ureaStock < UREA_PER_BATCH_KG) {
+  if (ureaStock < totalUreaNeeded) {
     return NextResponse.json(
       {
         success: false,
-        message: `Insufficient Urea. Need ${UREA_PER_BATCH_KG}kg, have ${ureaStock}kg`,
+        message: `Insufficient Urea. Need ${totalUreaNeeded}kg for ${batchCount} batch${batchCount !== 1 ? 'es' : ''}, have ${ureaStock}kg`,
         currentStock: ureaStock,
       },
       { status: 400 }
     )
   }
 
-  // Create two transactions: subtract Urea, add Free DEF
-  const ureaRunningTotal = ureaStock - UREA_PER_BATCH_KG
+  // Calculate new running totals
+  const ureaRunningTotal = ureaStock - totalUreaNeeded
   const freeDEFStock = await getCurrentStock(StockCategory.FREE_DEF)
-  const freeDEFRunningTotal = freeDEFStock + LITERS_PER_BATCH
+  const freeDEFRunningTotal = freeDEFStock + totalLitersProduced
   const finishedGoodsStock = await getCurrentStock(StockCategory.FINISHED_GOODS)
-  const finishedGoodsRunningTotal = finishedGoodsStock + LITERS_PER_BATCH
+  const finishedGoodsRunningTotal = finishedGoodsStock + totalLitersProduced
 
   // Create transactions in a transaction block
   const transactions = await prisma.$transaction([
@@ -181,9 +186,9 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
         date: data.date,
         type: 'PRODUCE_BATCH',
         category: 'UREA',
-        quantity: -UREA_PER_BATCH_KG,
+        quantity: -totalUreaNeeded,
         unit: 'KG',
-        description: `Production batch: -${UREA_PER_BATCH_KG}kg Urea`,
+        description: `Production: ${batchCount} batch${batchCount !== 1 ? 'es' : ''} (-${totalUreaNeeded}kg Urea)`,
         runningTotal: ureaRunningTotal,
       },
     }),
@@ -192,9 +197,9 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
         date: data.date,
         type: 'PRODUCE_BATCH',
         category: 'FREE_DEF',
-        quantity: LITERS_PER_BATCH,
+        quantity: totalLitersProduced,
         unit: 'LITERS',
-        description: `Production batch: +${LITERS_PER_BATCH}L Free DEF`,
+        description: `Production: ${batchCount} batch${batchCount !== 1 ? 'es' : ''} (+${totalLitersProduced}L Free DEF)`,
         runningTotal: freeDEFRunningTotal,
       },
     }),
@@ -203,9 +208,9 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
         date: data.date,
         type: 'PRODUCE_BATCH',
         category: 'FINISHED_GOODS',
-        quantity: LITERS_PER_BATCH,
+        quantity: totalLitersProduced,
         unit: 'LITERS',
-        description: `Production batch: +${LITERS_PER_BATCH}L Finished Goods`,
+        description: `Production: ${batchCount} batch${batchCount !== 1 ? 'es' : ''} (+${totalLitersProduced}L Finished Goods)`,
         runningTotal: finishedGoodsRunningTotal,
       },
     }),
@@ -213,7 +218,7 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
 
   return NextResponse.json({
     success: true,
-    message: `Produced ${LITERS_PER_BATCH}L Free DEF using ${UREA_PER_BATCH_KG}kg Urea`,
+    message: `Produced ${totalLitersProduced}L Free DEF (${batchCount} batch${batchCount !== 1 ? 'es' : ''}) using ${totalUreaNeeded}kg Urea`,
     transactions,
   })
 }

@@ -161,6 +161,7 @@ model BackupLog {
   driveFileId    String?  // Google Drive file ID
   inventoryCount Int
   expenseCount   Int
+  stockCount     Int      @default(0)
   status         String   // "SUCCESS" or "FAILED"
   errorMessage   String?
 

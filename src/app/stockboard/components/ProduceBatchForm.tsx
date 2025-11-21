@@ -20,6 +20,7 @@ import { AlertCircle, AlertTriangle, CheckCircle } from 'lucide-react'
 
 const formSchema = z.object({
   date: z.string().min(1, 'Date is required'),
+  batchCount: z.number().min(1, 'Must produce at least 1 batch').max(100, 'Maximum 100 batches at once'),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -36,20 +37,25 @@ export function ProduceBatchForm({ onClose, currentUreaStock }: ProduceBatchForm
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
+      batchCount: 1,
     },
   })
 
-  const hasEnoughUrea = currentUreaStock >= UREA_PER_BATCH_KG
+  const batchCount = watch('batchCount') || 1
+  const totalUreaNeeded = UREA_PER_BATCH_KG * batchCount
+  const totalLitersProduced = LITERS_PER_BATCH * batchCount
+  const hasEnoughUrea = currentUreaStock >= totalUreaNeeded
   const ureaBags = UREA_PER_BATCH_KG / KG_PER_BAG
 
   const onSubmit = async (data: FormData) => {
     if (!hasEnoughUrea) {
-      setError(`Insufficient Urea. Need ${UREA_PER_BATCH_KG}kg, have ${currentUreaStock.toFixed(1)}kg`)
+      setError(`Insufficient Urea. Need ${totalUreaNeeded.toFixed(1)}kg, have ${currentUreaStock.toFixed(1)}kg`)
       return
     }
 
@@ -64,8 +70,9 @@ export function ProduceBatchForm({ onClose, currentUreaStock }: ProduceBatchForm
           date: data.date,
           type: 'PRODUCE_BATCH',
           category: 'UREA',
-          quantity: -UREA_PER_BATCH_KG,
+          quantity: -totalUreaNeeded,
           unit: 'KG',
+          batchCount: data.batchCount,
         }),
       })
 
@@ -89,7 +96,7 @@ export function ProduceBatchForm({ onClose, currentUreaStock }: ProduceBatchForm
         <DialogHeader>
           <DialogTitle>Produce Batch</DialogTitle>
           <DialogDescription>
-            Create a new production batch: {UREA_PER_BATCH_KG}kg Urea → {LITERS_PER_BATCH}L Free DEF
+            Create production batches: {UREA_PER_BATCH_KG}kg Urea → {LITERS_PER_BATCH}L Free DEF per batch
           </DialogDescription>
         </DialogHeader>
 
@@ -100,6 +107,23 @@ export function ProduceBatchForm({ onClose, currentUreaStock }: ProduceBatchForm
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
+          <div>
+            <Label htmlFor="batchCount">Number of Batches</Label>
+            <Input
+              id="batchCount"
+              type="number"
+              min="1"
+              max="100"
+              {...register('batchCount', { valueAsNumber: true })}
+            />
+            {errors.batchCount && (
+              <p className="text-sm text-red-500 mt-1">{errors.batchCount.message}</p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              1 batch = {UREA_PER_BATCH_KG}kg Urea → {LITERS_PER_BATCH}L Free DEF
+            </p>
+          </div>
 
           {/* Stock Check */}
           <div className={`p-4 rounded-lg border ${hasEnoughUrea ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
@@ -118,11 +142,11 @@ export function ProduceBatchForm({ onClose, currentUreaStock }: ProduceBatchForm
                     Current Urea: <span className="font-semibold">{currentUreaStock.toFixed(1)} kg</span>
                   </p>
                   <p className={hasEnoughUrea ? 'text-green-700' : 'text-red-700'}>
-                    Required: <span className="font-semibold">{UREA_PER_BATCH_KG} kg ({ureaBags} bags)</span>
+                    Required for {batchCount} batch{batchCount !== 1 ? 'es' : ''}: <span className="font-semibold">{totalUreaNeeded.toFixed(1)} kg ({(totalUreaNeeded / KG_PER_BAG).toFixed(1)} bags)</span>
                   </p>
                   {hasEnoughUrea && (
                     <p className="text-green-600">
-                      After production: <span className="font-semibold">{(currentUreaStock - UREA_PER_BATCH_KG).toFixed(1)} kg</span>
+                      After production: <span className="font-semibold">{(currentUreaStock - totalUreaNeeded).toFixed(1)} kg</span>
                     </p>
                   )}
                 </div>
@@ -132,10 +156,10 @@ export function ProduceBatchForm({ onClose, currentUreaStock }: ProduceBatchForm
 
           {/* Production Summary */}
           <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <p className="font-medium text-purple-900 mb-2">Production Output</p>
+            <p className="font-medium text-purple-900 mb-2">Production Output ({batchCount} batch{batchCount !== 1 ? 'es' : ''})</p>
             <div className="space-y-1 text-sm text-purple-700">
-              <p>• Free DEF: <span className="font-semibold">+{LITERS_PER_BATCH} L</span></p>
-              <p>• Finished Goods: <span className="font-semibold">+{LITERS_PER_BATCH} L</span></p>
+              <p>• Free DEF: <span className="font-semibold">+{totalLitersProduced.toLocaleString()} L</span></p>
+              <p>• Finished Goods: <span className="font-semibold">+{totalLitersProduced.toLocaleString()} L</span></p>
             </div>
           </div>
 

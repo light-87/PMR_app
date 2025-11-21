@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button'
 import { StockOverviewCard } from './components/StockOverviewCard'
 import { AddUreaForm } from './components/AddUreaForm'
 import { ProduceBatchForm } from './components/ProduceBatchForm'
-import { SellFreeDEFForm } from './components/SellFreeDEFForm'
 import { StockTransactionLog } from './components/StockTransactionLog'
 import { useAuthStore } from '@/store/authStore'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
-import { PackagePlus, Factory, TrendingDown } from 'lucide-react'
+import { PackagePlus, Factory, RefreshCw } from 'lucide-react'
 import type { StockTransaction, StockSummary } from '@/types'
 import { useRouter } from 'next/navigation'
 
@@ -18,9 +17,9 @@ export default function StockBoardPage() {
   const [transactions, setTransactions] = useState<StockTransaction[]>([])
   const [summary, setSummary] = useState<StockSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [showAddUreaForm, setShowAddUreaForm] = useState(false)
   const [showProduceForm, setShowProduceForm] = useState(false)
-  const [showSellForm, setShowSellForm] = useState(false)
   const { role } = useAuthStore()
   const router = useRouter()
 
@@ -56,9 +55,26 @@ export default function StockBoardPage() {
   const handleFormClose = () => {
     setShowAddUreaForm(false)
     setShowProduceForm(false)
-    setShowSellForm(false)
     fetchData()
   }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchData()
+    setRefreshing(false)
+  }
+
+  // Auto-refresh when window regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (role === 'ADMIN') {
+        fetchData()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [fetchData, role])
 
   if (loading || role !== 'ADMIN') {
     return (
@@ -83,7 +99,13 @@ export default function StockBoardPage() {
 
         {/* Quick Actions */}
         <div className="bg-card border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">⚡ Quick Actions</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">⚡ Quick Actions</h2>
+            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
           <div className="flex flex-wrap gap-3">
             <Button onClick={() => setShowAddUreaForm(true)} variant="default">
               <PackagePlus className="h-4 w-4 mr-2" />
@@ -93,11 +115,10 @@ export default function StockBoardPage() {
               <Factory className="h-4 w-4 mr-2" />
               Produce Batch
             </Button>
-            <Button onClick={() => setShowSellForm(true)} variant="destructive">
-              <TrendingDown className="h-4 w-4 mr-2" />
-              Sell Free DEF
-            </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            💡 To sell Free DEF (loose), go to Inventory page
+          </p>
         </div>
 
         {/* Transaction Log */}
@@ -109,9 +130,6 @@ export default function StockBoardPage() {
         )}
         {showProduceForm && (
           <ProduceBatchForm onClose={handleFormClose} currentUreaStock={summary?.ureaKg || 0} />
-        )}
-        {showSellForm && (
-          <SellFreeDEFForm onClose={handleFormClose} currentFreeDEFStock={summary?.freeDEF || 0} />
         )}
       </div>
     </ProtectedLayout>
