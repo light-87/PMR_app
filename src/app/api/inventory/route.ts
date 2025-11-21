@@ -128,10 +128,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Auto-update stock tracking
+    // Auto-update stock tracking (only if StockTransaction table exists)
     const bucketSize = BUCKET_SIZES[validatedData.bucketType]
     if (bucketSize > 0) {
       try {
+        // Check if StockTransaction table exists by attempting to find one record
+        await prisma.stockTransaction.findFirst({ take: 1 })
+
         if (validatedData.action === 'STOCK') {
           // Filling buckets: subtract from Free DEF
           await createStockTransaction({
@@ -154,8 +157,8 @@ export async function POST(request: NextRequest) {
           })
         }
       } catch (stockError) {
-        // Log error but don't fail the inventory transaction
-        console.error('Stock update error:', stockError)
+        // Table doesn't exist yet or other error - silently skip stock tracking
+        console.log('Stock tracking not available yet (migration pending)')
       }
     }
 

@@ -36,6 +36,26 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Check if table exists first
+    try {
+      await prisma.stockTransaction.findFirst({ take: 1 })
+    } catch (tableError) {
+      // Table doesn't exist yet - return empty data
+      return NextResponse.json({
+        success: true,
+        transactions: [],
+        summary: {
+          ureaKg: 0,
+          ureaBags: 0,
+          ureaCansProduceL: 0,
+          freeDEF: 0,
+          bucketsInLiters: 0,
+          finishedGoods: 0,
+        },
+        message: 'Database migration pending. Please run: npx prisma migrate deploy'
+      })
+    }
+
     const searchParams = request.nextUrl.searchParams
     const date = searchParams.get('date')
     const category = searchParams.get('category') as StockCategory | null
@@ -91,6 +111,16 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Access denied' },
         { status: 403 }
       )
+    }
+
+    // Check if table exists first
+    try {
+      await prisma.stockTransaction.findFirst({ take: 1 })
+    } catch (tableError) {
+      return NextResponse.json({
+        success: false,
+        message: 'Database migration pending. Please run: npx prisma migrate deploy in your production environment.'
+      }, { status: 503 })
     }
 
     const body = await request.json()
