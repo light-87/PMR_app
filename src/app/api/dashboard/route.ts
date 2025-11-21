@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString())
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
+    const accountsParam = searchParams.get('accounts')
 
     // Determine date range based on view
     let startDate: Date
@@ -59,14 +60,25 @@ export async function GET(request: NextRequest) {
       endDate = endOfYear(new Date(year, 0, 1))
     }
 
+    // Build where clause with optional account filter
+    const whereClause: any = {
+      date: {
+        gte: startDate,
+        lte: endDate,
+      },
+    }
+
+    // Add account filter if accounts are specified (not "ALL")
+    if (accountsParam && accountsParam !== 'ALL') {
+      const accounts = accountsParam.split(',')
+      whereClause.account = {
+        in: accounts,
+      }
+    }
+
     // Fetch all transactions in date range
     const transactions = await prisma.expenseTransaction.findMany({
-      where: {
-        date: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
+      where: whereClause,
       orderBy: { date: 'asc' },
     })
 
