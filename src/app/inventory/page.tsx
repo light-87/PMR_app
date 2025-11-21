@@ -25,6 +25,7 @@ export default function InventoryPage() {
   const { role } = useAuthStore()
 
   const isAdmin = role === 'ADMIN'
+  const canSellFreeDEF = role === 'ADMIN' || role === 'EXPENSE_INVENTORY'
 
   const fetchData = useCallback(async () => {
     try {
@@ -41,8 +42,8 @@ export default function InventoryPage() {
         setSummary(data.summary)
       }
 
-      // Fetch stock data for Free DEF
-      if (isAdmin) {
+      // Fetch stock data for Free DEF (for users who can sell Free DEF)
+      if (canSellFreeDEF) {
         const stockResponse = await fetch('/api/stock')
         const stockData = await stockResponse.json()
         if (stockData.success && stockData.summary) {
@@ -54,7 +55,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchDate, isAdmin])
+  }, [searchDate, canSellFreeDEF])
 
   useEffect(() => {
     fetchData()
@@ -101,7 +102,7 @@ export default function InventoryPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Inventory Management</h1>
           <div className="flex gap-2">
-            {isAdmin && (
+            {canSellFreeDEF && (
               <Button
                 onClick={() => setShowSellFreeDEFForm(true)}
                 variant="destructive"

@@ -23,7 +23,8 @@ export default function StockBoardPage() {
   const { role } = useAuthStore()
   const router = useRouter()
 
-  const isAdmin = role === 'ADMIN'
+  // Allow ADMIN and EXPENSE_INVENTORY to perform actions
+  const canPerformActions = role === 'ADMIN' || role === 'EXPENSE_INVENTORY'
 
   const fetchData = useCallback(async () => {
     try {
@@ -97,7 +98,7 @@ export default function StockBoardPage() {
               Refresh
             </Button>
           </div>
-          {isAdmin ? (
+          {canPerformActions ? (
             <>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={() => setShowAddUreaForm(true)} variant="default">

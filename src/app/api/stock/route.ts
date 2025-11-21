@@ -29,13 +29,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Only admins can view stock
-    if (session.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, message: 'Access denied' },
-        { status: 403 }
-      )
-    }
+    // All authenticated users can view stock
 
     // Check if table exists first
     try {
@@ -106,8 +100,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Only admins can modify stock
-    if (session.role !== 'ADMIN') {
+    // Only admins and expense_inventory can modify stock
+    if (session.role !== 'ADMIN' && session.role !== 'EXPENSE_INVENTORY') {
       return NextResponse.json(
         { success: false, message: 'Access denied' },
         { status: 403 }
