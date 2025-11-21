@@ -21,6 +21,7 @@ export default function ExpensesPage() {
   const [uniqueNames, setUniqueNames] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<ExpenseTransaction | null>(null)
   const { role } = useAuthStore()
 
   const isAdmin = role === 'ADMIN'
@@ -52,8 +53,8 @@ export default function ExpensesPage() {
   }, [fetchData])
 
   const handleEdit = (transaction: ExpenseTransaction) => {
-    // TODO: Implement edit modal
-    console.log('Edit transaction:', transaction)
+    setEditingTransaction(transaction)
+    setShowAddForm(true)
   }
 
   const handleDelete = async (id: string) => {
@@ -108,9 +109,13 @@ export default function ExpensesPage() {
 
         <AddExpenseForm
           open={showAddForm}
-          onClose={() => setShowAddForm(false)}
-          onSuccess={() => fetchData(1)}
+          onClose={() => {
+            setShowAddForm(false)
+            setEditingTransaction(null)
+          }}
+          onSuccess={() => fetchData(editingTransaction ? pagination.page : 1)}
           uniqueNames={uniqueNames}
+          editTransaction={editingTransaction}
         />
       </div>
     </ProtectedLayout>
