@@ -11,6 +11,7 @@ import { BackupManager } from './components/BackupManager'
 import { RestoreManager } from './components/RestoreManager'
 import { BulkUploadForm } from './components/BulkUploadForm'
 import { DeleteRecentImport } from './components/DeleteRecentImport'
+import { FactoryReset } from './components/FactoryReset'
 
 export default function AdminPage() {
   const [pins, setPins] = useState({
@@ -132,6 +133,8 @@ export default function AdminPage() {
         <BackupManager />
 
         <RestoreManager />
+
+        <FactoryReset />
       </div>
     </ProtectedLayout>
   )
