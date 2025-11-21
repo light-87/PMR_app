@@ -306,12 +306,25 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
 
   const newRunningTotal = currentStock + data.quantity
 
-  // For SELL_FREE_DEF, also update FINISHED_GOODS
+  // For SELL_FREE_DEF, also update FINISHED_GOODS and create InventoryTransaction
   if (data.type === 'SELL_FREE_DEF') {
     const finishedGoodsStock = await getCurrentStock(StockCategory.FINISHED_GOODS)
     const finishedGoodsRunningTotal = finishedGoodsStock + data.quantity
 
+    // Get current inventory running total for FACTORY + IBC_TANK
+    const lastInventoryTransaction = await prisma.inventoryTransaction.findFirst({
+      where: {
+        warehouse: 'FACTORY',
+        bucketType: 'IBC_TANK',
+      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      select: { runningTotal: true },
+    })
+    const currentInventoryTotal = lastInventoryTransaction?.runningTotal || 0
+    const newInventoryRunningTotal = currentInventoryTotal + Math.abs(data.quantity) // Add positive liters
+
     const transactions = await prisma.$transaction([
+      // StockTransaction for FREE_DEF
       prisma.stockTransaction.create({
         data: {
           date: data.date,
@@ -323,6 +336,7 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
           runningTotal: newRunningTotal,
         },
       }),
+      // StockTransaction for FINISHED_GOODS
       prisma.stockTransaction.create({
         data: {
           date: data.date,
@@ -332,6 +346,18 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
           unit: 'LITERS',
           description: `Sold Free DEF: ${data.quantity}L`,
           runningTotal: finishedGoodsRunningTotal,
+        },
+      }),
+      // InventoryTransaction for display in Inventory page
+      prisma.inventoryTransaction.create({
+        data: {
+          date: data.date,
+          warehouse: 'FACTORY',
+          bucketType: 'IBC_TANK',
+          action: 'SELL',
+          quantity: Math.abs(data.quantity), // Store as positive liters for display
+          buyerSeller: data.description?.replace('Sold ', '').replace('L Free DEF to ', '') || 'Customer',
+          runningTotal: newInventoryRunningTotal,
         },
       }),
     ])

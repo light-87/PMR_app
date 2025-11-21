@@ -10,6 +10,9 @@ interface StockTransactionLogProps {
 }
 
 export function StockTransactionLog({ transactions }: StockTransactionLogProps) {
+  // Filter out SELL_FREE_DEF transactions (they appear in Inventory page instead)
+  const filteredTransactions = transactions.filter(t => t.type !== 'SELL_FREE_DEF')
+
   const getTransactionColor = (type: string) => {
     switch (type) {
       case 'ADD_UREA':
@@ -45,8 +48,8 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
   // Group production batch transactions
   const groupedTransactions: Array<StockTransaction | StockTransaction[]> = []
   let i = 0
-  while (i < transactions.length) {
-    const current = transactions[i]
+  while (i < filteredTransactions.length) {
+    const current = filteredTransactions[i]
 
     // Check if this is a production batch
     if (current.type === 'PRODUCE_BATCH') {
@@ -55,8 +58,8 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
       let j = i + 1
 
       // Look ahead for the next 2 transactions (should be same date and PRODUCE_BATCH)
-      while (j < transactions.length && j < i + 3) {
-        const next = transactions[j]
+      while (j < filteredTransactions.length && j < i + 3) {
+        const next = filteredTransactions[j]
         if (next.type === 'PRODUCE_BATCH' &&
             new Date(next.date).getTime() === new Date(current.date).getTime() &&
             new Date(next.createdAt).getTime() - new Date(current.createdAt).getTime() < 1000) {

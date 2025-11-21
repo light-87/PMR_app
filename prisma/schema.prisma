@@ -55,6 +55,7 @@ model InventoryTransaction {
 enum Warehouse {
   PALLAVI
   TULARAM
+  FACTORY
 }
 
 enum BucketType {
