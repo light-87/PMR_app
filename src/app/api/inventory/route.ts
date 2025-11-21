@@ -210,6 +210,24 @@ async function calculateStockSummary() {
       total: 0,
     }
 
+    // Special handling for FREE_DEF - not stored in warehouses
+    if (bucketType === 'FREE_DEF') {
+      // Get current Free DEF stock from StockBoard (StockTransaction)
+      try {
+        const lastStockTransaction = await prisma.stockTransaction.findFirst({
+          where: { category: 'FREE_DEF' },
+          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+          select: { runningTotal: true },
+        })
+        row.total = lastStockTransaction?.runningTotal || 0
+      } catch {
+        row.total = 0
+      }
+      // Pallavi and Tularam remain 0 for FREE_DEF
+      summary.push(row)
+      continue
+    }
+
     for (const warehouse of warehouses) {
       // Skip FACTORY - it's not shown in the summary (only used for Free DEF tracking)
       if (warehouse === 'FACTORY') continue

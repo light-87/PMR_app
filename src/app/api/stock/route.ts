@@ -311,18 +311,6 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
     const finishedGoodsStock = await getCurrentStock(StockCategory.FINISHED_GOODS)
     const finishedGoodsRunningTotal = finishedGoodsStock + data.quantity
 
-    // Get current inventory running total for FACTORY + FREE_DEF
-    const lastInventoryTransaction = await prisma.inventoryTransaction.findFirst({
-      where: {
-        warehouse: 'FACTORY',
-        bucketType: 'FREE_DEF',
-      },
-      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-      select: { runningTotal: true },
-    })
-    const currentInventoryTotal = lastInventoryTransaction?.runningTotal || 0
-    const newInventoryRunningTotal = currentInventoryTotal + Math.abs(data.quantity) // Add positive liters
-
     const transactions = await prisma.$transaction([
       // StockTransaction for FREE_DEF
       prisma.stockTransaction.create({
@@ -349,15 +337,16 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
         },
       }),
       // InventoryTransaction for display in Inventory page
+      // Running total should match the Free DEF stock balance (same as StockBoard)
       prisma.inventoryTransaction.create({
         data: {
           date: data.date,
           warehouse: 'FACTORY',
           bucketType: 'FREE_DEF',
           action: 'SELL',
-          quantity: Math.abs(data.quantity), // Store as positive liters for display
+          quantity: data.quantity, // Store as negative for sell
           buyerSeller: data.description?.split(' to ').pop()?.trim() || 'Customer',
-          runningTotal: newInventoryRunningTotal,
+          runningTotal: newRunningTotal, // Use Free DEF stock balance
         },
       }),
     ])
@@ -402,10 +391,12 @@ async function getCurrentStock(category: StockCategory): Promise<number> {
 async function calculateStockSummary() {
   const ureaKg = await getCurrentStock(StockCategory.UREA)
   const freeDEF = await getCurrentStock(StockCategory.FREE_DEF)
-  const finishedGoods = await getCurrentStock(StockCategory.FINISHED_GOODS)
 
   // Calculate buckets in liters from inventory
   const bucketsInLiters = await calculateBucketsInLiters()
+
+  // Finished Goods = Free DEF (loose) + In Buckets (liters)
+  const finishedGoods = freeDEF + bucketsInLiters
 
   return {
     ureaKg,
