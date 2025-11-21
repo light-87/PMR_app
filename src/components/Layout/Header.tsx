@@ -27,6 +27,7 @@ export function Header() {
   const navItems = [
     { href: '/inventory', label: 'Inventory', roles: ['ADMIN', 'EXPENSE_INVENTORY', 'INVENTORY_ONLY'] },
     { href: '/expenses', label: 'Expenses', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
+    { href: '/search', label: 'Search', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
     { href: '/dashboard', label: 'Dashboard', roles: ['ADMIN'] },
     { href: '/statements', label: 'Statements', roles: ['ADMIN'] },
     { href: '/admin', label: 'Admin', roles: ['ADMIN'] },
