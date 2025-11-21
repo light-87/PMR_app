@@ -46,22 +46,21 @@ export function MonthlyTable({ data }: MonthlyTableProps) {
               {data.map((row) => (
                 <tr
                   key={row.month}
-                  className={cn(
-                    'border-b',
-                    row.net >= 0 ? 'bg-green-50/50' : 'bg-red-50/50'
-                  )}
+                  className="border-b border-border hover:bg-muted/50 transition-colors"
                 >
                   <td className="p-3 font-medium">{row.month}</td>
-                  <td className="text-right p-3 text-green-700">
+                  <td className="text-right p-3 text-green-600 dark:text-green-500">
                     ₹{formatCurrency(row.income)}
                   </td>
-                  <td className="text-right p-3 text-red-700">
+                  <td className="text-right p-3 text-red-600 dark:text-red-500">
                     ₹{formatCurrency(row.expense)}
                   </td>
                   <td
                     className={cn(
                       'text-right p-3 font-bold',
-                      row.net >= 0 ? 'text-green-900' : 'text-red-900'
+                      row.net >= 0
+                        ? 'text-green-700 dark:text-green-500'
+                        : 'text-red-700 dark:text-red-500'
                     )}
                   >
                     ₹{formatCurrency(row.net)}
@@ -70,18 +69,20 @@ export function MonthlyTable({ data }: MonthlyTableProps) {
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-muted font-bold">
+              <tr className="bg-muted/50 font-bold border-t-2 border-border">
                 <td className="p-3">Total</td>
-                <td className="text-right p-3 text-green-700">
+                <td className="text-right p-3 text-green-600 dark:text-green-500">
                   ₹{formatCurrency(totals.income)}
                 </td>
-                <td className="text-right p-3 text-red-700">
+                <td className="text-right p-3 text-red-600 dark:text-red-500">
                   ₹{formatCurrency(totals.expense)}
                 </td>
                 <td
                   className={cn(
                     'text-right p-3',
-                    totals.net >= 0 ? 'text-green-900' : 'text-red-900'
+                    totals.net >= 0
+                      ? 'text-green-700 dark:text-green-500'
+                      : 'text-red-700 dark:text-red-500'
                   )}
                 >
                   ₹{formatCurrency(totals.net)}

@@ -53,7 +53,11 @@ export function MonthlyBarChart({ data }: MonthlyBarChartProps) {
                   color: 'hsl(var(--card-foreground))'
                 }}
               />
-              <Legend />
+              <Legend
+                wrapperStyle={{
+                  color: 'hsl(var(--card-foreground))',
+                }}
+              />
               <Bar dataKey="income" fill="#22c55e" name="Income" />
               <Bar dataKey="expense" fill="#ef4444" name="Expense" />
             </BarChart>

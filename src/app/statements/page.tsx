@@ -145,10 +145,10 @@ export default function StatementsPage() {
 
       {/* Print-only content - hidden on screen */}
       {statement && (
-        <div id="print-content" className="print-only" style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+        <div id="print-content" className="print-only" style={{ padding: '20px', fontFamily: 'Arial, sans-serif', backgroundColor: '#ffffff', color: '#000000' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #000' }}>
             <img src="/logo.png" alt="Company Logo" style={{ maxWidth: '168px', height: 'auto' }} />
-            <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.6' }}>
+            <div style={{ textAlign: 'right', fontSize: '12px', lineHeight: '1.6', color: '#000000' }}>
               <div><strong>Address:</strong> Pimpalgaon Manegao, Maharashtra</div>
               <div><strong>Email:</strong> pbgaydhane@gmail.com</div>
               <div><strong>Phone:</strong> +917030847030</div>
@@ -156,9 +156,9 @@ export default function StatementsPage() {
             </div>
           </div>
 
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '20px 0', textAlign: 'center' }}>Customer Statement</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '20px 0', textAlign: 'center', color: '#000000' }}>Customer Statement</h1>
 
-          <div style={{ margin: '20px 0', fontSize: '14px' }}>
+          <div style={{ margin: '20px 0', fontSize: '14px', color: '#000000' }}>
             <div><strong>Customer/Vendor:</strong> {selectedName}</div>
             <div><strong>Period:</strong> {allTime ? 'All time' : `${startDate || 'Beginning'} to ${endDate || 'Present'}`}</div>
             <div><strong>Generated on:</strong> {format(new Date(), 'dd-MMM-yyyy')}</div>
@@ -177,19 +177,19 @@ export default function StatementsPage() {
             <tbody>
               {statement.transactions.map((t, index) => (
                 <tr key={t.id}>
-                  <td style={{ border: '1px solid #000', padding: '8px' }}>{index + 1}</td>
-                  <td style={{ border: '1px solid #000', padding: '8px' }}>{format(new Date(t.date), 'dd-MMM-yyyy')}</td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: t.type === 'INCOME' ? '#16a34a' : '#dc2626' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', color: '#000000', backgroundColor: '#ffffff' }}>{index + 1}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', color: '#000000', backgroundColor: '#ffffff' }}>{format(new Date(t.date), 'dd-MMM-yyyy')}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', color: t.type === 'INCOME' ? '#16a34a' : '#dc2626', backgroundColor: '#ffffff' }}>
                     ₹{formatCurrency(Number(t.amount))}
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '8px' }}>{ACCOUNT_LABELS[t.account]}</td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{t.type}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', color: '#000000', backgroundColor: '#ffffff' }}>{ACCOUNT_LABELS[t.account]}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', color: '#000000', backgroundColor: '#ffffff' }}>{t.type}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <div style={{ marginTop: '30px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: statement.totalBalance >= 0 ? '#16a34a' : '#dc2626' }}>
+          <div style={{ marginTop: '30px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: statement.totalBalance >= 0 ? '#16a34a' : '#dc2626', backgroundColor: '#ffffff' }}>
             Total Balance: ₹{formatCurrency(Math.abs(statement.totalBalance))}
             {statement.totalBalance < 0 && ' (Due)'}
           </div>
@@ -293,7 +293,7 @@ export default function StatementsPage() {
                       <Printer className="h-4 w-4 mr-2" />
                       Print
                     </Button>
-                    <div className={`text-right ${statement.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className={`text-right ${statement.totalBalance >= 0 ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
                       <p className="text-sm text-muted-foreground">Total Balance</p>
                       <p className="text-2xl font-bold">
                         ₹{formatCurrency(Math.abs(statement.totalBalance))}
@@ -317,12 +317,12 @@ export default function StatementsPage() {
                     </thead>
                     <tbody>
                       {statement.transactions.map((t, index) => (
-                        <tr key={t.id} className="border-b">
+                        <tr key={t.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                           <td className="p-3">{index + 1}</td>
                           <td className="p-3">
                             {format(new Date(t.date), 'dd-MMM-yyyy')}
                           </td>
-                          <td className={`text-right p-3 ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                          <td className={`text-right p-3 ${t.type === 'INCOME' ? 'text-green-600 dark:text-green-500' : 'text-red-600 dark:text-red-500'}`}>
                             ₹{formatCurrency(Number(t.amount))}
                           </td>
                           <td className="p-3">{ACCOUNT_LABELS[t.account]}</td>

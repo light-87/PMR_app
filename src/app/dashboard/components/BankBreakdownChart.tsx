@@ -35,7 +35,7 @@ export function BankBreakdownChart({ data, title, type }: BankBreakdownChartProp
       const total = chartData.reduce((sum, item) => sum + item.value, 0)
       return (
         <div className="bg-card border border-border rounded-lg shadow-lg p-3">
-          <p className="font-semibold">{payload[0].name}</p>
+          <p className="font-semibold text-card-foreground">{payload[0].name}</p>
           <p className="text-sm text-muted-foreground">
             ₹{formatCurrency(payload[0].value)}
           </p>
@@ -43,6 +43,21 @@ export function BankBreakdownChart({ data, title, type }: BankBreakdownChartProp
             {((payload[0].value / total) * 100).toFixed(1)}%
           </p>
         </div>
+      )
+    }
+    return null
+  }
+
+  const renderLabel = ({ name, percent }: any) => {
+    if (percent > 0.05) {
+      return (
+        <text
+          fill="hsl(var(--card-foreground))"
+          fontSize="12"
+          fontWeight="500"
+        >
+          {`${name} (${(percent * 100).toFixed(0)}%)`}
+        </text>
       )
     }
     return null
@@ -76,10 +91,11 @@ export function BankBreakdownChart({ data, title, type }: BankBreakdownChartProp
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                labelLine={false}
-                label={({ name, percent }) =>
-                  percent > 0.05 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''
-                }
+                labelLine={{
+                  stroke: 'hsl(var(--muted-foreground))',
+                  strokeWidth: 1
+                }}
+                label={renderLabel}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -89,7 +105,12 @@ export function BankBreakdownChart({ data, title, type }: BankBreakdownChartProp
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              <Legend
+                wrapperStyle={{
+                  color: 'hsl(var(--card-foreground))',
+                }}
+                iconType="circle"
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>

@@ -138,29 +138,24 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CategoryPieChart
-                data={data.categoryBreakdown}
-                title="Expense Categories"
-              />
-              <CategoryPieChart
                 data={data.incomeCategoryBreakdown}
                 title="Income Categories"
               />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <BankBreakdownChart
                 data={data.accountBreakdown.expense}
                 title="Expense by Bank/Account"
                 type="expense"
               />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <TopExpensesChart data={data.topExpenses} />
               <BankBreakdownChart
                 data={data.accountBreakdown.income}
                 title="Income by Bank/Account"
                 type="income"
               />
             </div>
-
-            <TopExpensesChart data={data.topExpenses} />
 
             <MonthlyTable data={data.monthlyData} />
           </>

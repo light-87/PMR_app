@@ -90,7 +90,11 @@ export function TrendAreaChart({ data }: TrendAreaChartProps) {
                 stroke="hsl(var(--muted-foreground))"
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              <Legend
+                wrapperStyle={{
+                  color: 'hsl(var(--card-foreground))',
+                }}
+              />
               <Area
                 type="monotone"
                 dataKey="income"
