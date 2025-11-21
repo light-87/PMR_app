@@ -22,9 +22,9 @@ import { Search as SearchIcon, Printer } from 'lucide-react'
 
 export default function SearchPage() {
   const [names, setNames] = useState<string[]>([])
-  const [selectedName, setSelectedName] = useState<string>('')
-  const [selectedAccount, setSelectedAccount] = useState<string>('')
-  const [selectedType, setSelectedType] = useState<string>('')
+  const [selectedName, setSelectedName] = useState<string>('ALL')
+  const [selectedAccount, setSelectedAccount] = useState<string>('ALL')
+  const [selectedType, setSelectedType] = useState<string>('ALL')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [loading, setLoading] = useState(true)
@@ -58,9 +58,9 @@ export default function SearchPage() {
     setSearching(true)
     try {
       const params = new URLSearchParams()
-      if (selectedName) params.set('name', selectedName)
-      if (selectedAccount) params.set('account', selectedAccount)
-      if (selectedType) params.set('type', selectedType)
+      if (selectedName && selectedName !== 'ALL') params.set('name', selectedName)
+      if (selectedAccount && selectedAccount !== 'ALL') params.set('account', selectedAccount)
+      if (selectedType && selectedType !== 'ALL') params.set('type', selectedType)
       if (startDate) params.set('startDate', startDate)
       if (endDate) params.set('endDate', endDate)
 
@@ -83,9 +83,9 @@ export default function SearchPage() {
   }
 
   const handleReset = () => {
-    setSelectedName('')
-    setSelectedAccount('')
-    setSelectedType('')
+    setSelectedName('ALL')
+    setSelectedAccount('ALL')
+    setSelectedType('ALL')
     setStartDate('')
     setEndDate('')
     setResults(null)
@@ -97,9 +97,9 @@ export default function SearchPage() {
 
   const getFilterSummary = () => {
     const filters: string[] = []
-    if (selectedName) filters.push(`Name: ${selectedName}`)
-    if (selectedAccount) filters.push(`Account: ${ACCOUNT_LABELS[selectedAccount as ExpenseAccount]}`)
-    if (selectedType) filters.push(`Type: ${selectedType}`)
+    if (selectedName && selectedName !== 'ALL') filters.push(`Name: ${selectedName}`)
+    if (selectedAccount && selectedAccount !== 'ALL') filters.push(`Account: ${ACCOUNT_LABELS[selectedAccount as ExpenseAccount]}`)
+    if (selectedType && selectedType !== 'ALL') filters.push(`Type: ${selectedType}`)
     if (startDate) filters.push(`From: ${format(new Date(startDate), 'dd-MMM-yyyy')}`)
     if (endDate) filters.push(`To: ${format(new Date(endDate), 'dd-MMM-yyyy')}`)
     return filters.length > 0 ? filters.join(' | ') : 'All Transactions'
@@ -269,7 +269,7 @@ export default function SearchPage() {
                       <SelectValue placeholder="All names" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All names</SelectItem>
+                      <SelectItem value="ALL">All names</SelectItem>
                       {names.map((name) => (
                         <SelectItem key={name} value={name}>
                           {name}
@@ -286,7 +286,7 @@ export default function SearchPage() {
                       <SelectValue placeholder="All accounts" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All accounts</SelectItem>
+                      <SelectItem value="ALL">All accounts</SelectItem>
                       <SelectItem value="CASH">Cash</SelectItem>
                       <SelectItem value="PRASHANT_GAYDHANE">Prashant Gaydhane</SelectItem>
                       <SelectItem value="PMR">PMR</SelectItem>
@@ -303,7 +303,7 @@ export default function SearchPage() {
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
+                      <SelectItem value="ALL">All types</SelectItem>
                       <SelectItem value="INCOME">Income</SelectItem>
                       <SelectItem value="EXPENSE">Expense</SelectItem>
                     </SelectContent>
