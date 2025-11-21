@@ -211,10 +211,13 @@ async function calculateStockSummary() {
     }
 
     for (const warehouse of warehouses) {
+      // Skip FACTORY - it's not shown in the summary (only used for Free DEF tracking)
+      if (warehouse === 'FACTORY') continue
+
       const stock = await getCurrentStock(bucketType, warehouse)
       if (warehouse === 'PALLAVI') {
         row.pallavi = stock
-      } else {
+      } else if (warehouse === 'TULARAM') {
         row.tularam = stock
       }
     }
