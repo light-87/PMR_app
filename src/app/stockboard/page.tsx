@@ -23,12 +23,7 @@ export default function StockBoardPage() {
   const { role } = useAuthStore()
   const router = useRouter()
 
-  // Only admins can access StockBoard
-  useEffect(() => {
-    if (role && role !== 'ADMIN') {
-      router.push('/inventory')
-    }
-  }, [role, router])
+  const isAdmin = role === 'ADMIN'
 
   const fetchData = useCallback(async () => {
     try {
@@ -47,10 +42,8 @@ export default function StockBoardPage() {
   }, [])
 
   useEffect(() => {
-    if (role === 'ADMIN') {
-      fetchData()
-    }
-  }, [fetchData, role])
+    fetchData()
+  }, [fetchData])
 
   const handleFormClose = () => {
     setShowAddUreaForm(false)
@@ -67,16 +60,14 @@ export default function StockBoardPage() {
   // Auto-refresh when window regains focus
   useEffect(() => {
     const handleFocus = () => {
-      if (role === 'ADMIN') {
-        fetchData()
-      }
+      fetchData()
     }
 
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
-  }, [fetchData, role])
+  }, [fetchData])
 
-  if (loading || role !== 'ADMIN') {
+  if (loading) {
     return (
       <ProtectedLayout>
         <PageLoader />
@@ -106,19 +97,27 @@ export default function StockBoardPage() {
               Refresh
             </Button>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => setShowAddUreaForm(true)} variant="default">
-              <PackagePlus className="h-4 w-4 mr-2" />
-              Add Urea
-            </Button>
-            <Button onClick={() => setShowProduceForm(true)} variant="default" className="bg-purple-600 hover:bg-purple-700">
-              <Factory className="h-4 w-4 mr-2" />
-              Produce Batch
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            💡 To sell Free DEF (loose), go to Inventory page
-          </p>
+          {isAdmin ? (
+            <>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => setShowAddUreaForm(true)} variant="default">
+                  <PackagePlus className="h-4 w-4 mr-2" />
+                  Add Urea
+                </Button>
+                <Button onClick={() => setShowProduceForm(true)} variant="default" className="bg-purple-600 hover:bg-purple-700">
+                  <Factory className="h-4 w-4 mr-2" />
+                  Produce Batch
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                💡 To sell Free DEF (loose), go to Inventory page
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              View stock levels and production history. Contact admin for production actions.
+            </p>
+          )}
         </div>
 
         {/* Transaction Log */}
