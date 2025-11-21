@@ -311,11 +311,11 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
     const finishedGoodsStock = await getCurrentStock(StockCategory.FINISHED_GOODS)
     const finishedGoodsRunningTotal = finishedGoodsStock + data.quantity
 
-    // Get current inventory running total for FACTORY + IBC_TANK
+    // Get current inventory running total for FACTORY + FREE_DEF
     const lastInventoryTransaction = await prisma.inventoryTransaction.findFirst({
       where: {
         warehouse: 'FACTORY',
-        bucketType: 'IBC_TANK',
+        bucketType: 'FREE_DEF',
       },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       select: { runningTotal: true },
@@ -353,7 +353,7 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
         data: {
           date: data.date,
           warehouse: 'FACTORY',
-          bucketType: 'IBC_TANK',
+          bucketType: 'FREE_DEF',
           action: 'SELL',
           quantity: Math.abs(data.quantity), // Store as positive liters for display
           buyerSeller: data.description?.replace('Sold ', '').replace('L Free DEF to ', '') || 'Customer',

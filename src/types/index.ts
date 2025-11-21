@@ -8,7 +8,7 @@ export interface SessionData {
 // Enum Types (mirror Prisma enums)
 export type PinRole = 'ADMIN' | 'EXPENSE_INVENTORY' | 'INVENTORY_ONLY'
 
-export type Warehouse = 'PALLAVI' | 'TULARAM'
+export type Warehouse = 'PALLAVI' | 'TULARAM' | 'FACTORY'
 
 export type BucketType =
   | 'TATA_G'
@@ -22,6 +22,7 @@ export type BucketType =
   | 'TATA_10_LTR'
   | 'IBC_TANK'
   | 'AP_BLUE'
+  | 'FREE_DEF'
 
 export type ActionType = 'STOCK' | 'SELL'
 
@@ -176,6 +177,7 @@ export const BUCKET_TYPE_LABELS: Record<BucketType, string> = {
   TATA_10_LTR: 'TATA 10 Ltr',
   IBC_TANK: 'IBC tank',
   AP_BLUE: 'AP Blue',
+  FREE_DEF: 'Free DEF',
 }
 
 // Bucket sizes in liters (0 for non-sellable items)
@@ -189,8 +191,9 @@ export const BUCKET_SIZES: Record<BucketType, number> = {
   MH: 20,
   MH_10_LTR: 10,
   TATA_10_LTR: 10,
-  IBC_TANK: 0, // Not counted as sellable product
+  IBC_TANK: 0, // Not counted as sellable product (for counting empty tanks)
   AP_BLUE: 20,
+  FREE_DEF: 0, // Not counted (liters tracked separately in quantity field)
 }
 
 export const ACCOUNT_LABELS: Record<ExpenseAccount, string> = {
@@ -204,6 +207,7 @@ export const ACCOUNT_LABELS: Record<ExpenseAccount, string> = {
 export const WAREHOUSE_LABELS: Record<Warehouse, string> = {
   PALLAVI: 'Pallavi',
   TULARAM: 'Tularam',
+  FACTORY: 'Factory',
 }
 
 // Stock Tracking Types

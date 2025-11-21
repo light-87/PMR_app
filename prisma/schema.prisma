@@ -70,6 +70,7 @@ enum BucketType {
   TATA_10_LTR
   IBC_TANK
   AP_BLUE
+  FREE_DEF
 }
 
 enum ActionType {
