@@ -4,16 +4,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { ProtectedLayout } from '@/components/Layout/ProtectedLayout'
 import { Button } from '@/components/ui/button'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
-import { RefreshCw, Calendar, Download } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import type { DailyReportData } from '@/types'
-import { MetricCard } from './components/MetricCard'
 import { FinancialHealthCard } from './components/FinancialHealthCard'
 import { InventoryActivityCard } from './components/InventoryActivityCard'
 import { ProductionStatusCard } from './components/ProductionStatusCard'
 import { OverallHealthCard } from './components/OverallHealthCard'
 import { ExpenseBreakdownChart } from './components/ExpenseBreakdownChart'
-import { InventoryMovementChart } from './components/InventoryMovementChart'
 import { ProductionFlowChart } from './components/ProductionFlowChart'
 import { ActivityTimeline } from './components/ActivityTimeline'
 import { QuickInsights } from './components/QuickInsights'
@@ -65,11 +63,6 @@ export default function DailyReportPage() {
 
   const handleRefresh = () => {
     fetchReport()
-  }
-
-  const handleExport = () => {
-    // TODO: Implement export functionality
-    alert('Export feature coming soon!')
   }
 
   if (loading && !reportData) {
@@ -138,12 +131,6 @@ export default function DailyReportPage() {
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-
-            {/* Export Button */}
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
           </div>
         </div>
 
@@ -151,11 +138,6 @@ export default function DailyReportPage() {
         <div className="text-xs text-gray-500 text-right">
           Last updated: {format(lastUpdated, 'MMM dd, yyyy HH:mm:ss')}
         </div>
-
-        {/* Quick Insights */}
-        {reportData.insights.length > 0 && (
-          <QuickInsights insights={reportData.insights} />
-        )}
 
         {/* Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -166,14 +148,18 @@ export default function DailyReportPage() {
         </div>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ExpenseBreakdownChart financial={reportData.financial} />
-          <InventoryMovementChart inventory={reportData.inventory} />
           <ProductionFlowChart production={reportData.production} />
         </div>
 
         {/* Activity Timeline */}
         <ActivityTimeline timeline={reportData.timeline} />
+
+        {/* Quick Insights */}
+        {reportData.insights.length > 0 && (
+          <QuickInsights insights={reportData.insights} />
+        )}
       </div>
     </ProtectedLayout>
   )

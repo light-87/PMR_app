@@ -249,26 +249,30 @@ function calculateInventoryMetrics(
   transactions: any[],
   allTransactions: any[]
 ): InventoryMetrics {
-  const totalBucketsMoved = transactions.reduce(
+  // Exclude FREE_DEF from calculations (it's in liters, not bucket count)
+  const filteredTransactions = transactions.filter((t) => t.bucketType !== 'FREE_DEF')
+  const filteredAllTransactions = allTransactions.filter((t) => t.bucketType !== 'FREE_DEF')
+
+  const totalBucketsMoved = filteredTransactions.reduce(
     (sum, t) => sum + Math.abs(t.quantity),
     0
   )
 
-  const bucketsStocked = transactions
+  const bucketsStocked = filteredTransactions
     .filter((t) => t.action === 'STOCK')
     .reduce((sum, t) => sum + t.quantity, 0)
 
   const bucketsSold = Math.abs(
-    transactions
+    filteredTransactions
       .filter((t) => t.action === 'SELL')
       .reduce((sum, t) => sum + t.quantity, 0)
   )
 
-  const activeBucketTypes = new Set(transactions.map((t) => t.bucketType)).size
+  const activeBucketTypes = new Set(filteredTransactions.map((t) => t.bucketType)).size
 
-  // Calculate current stock levels
+  // Calculate current stock levels (excluding FREE_DEF)
   const stockByBucket = new Map<BucketType, number>()
-  allTransactions.forEach((t) => {
+  filteredAllTransactions.forEach((t) => {
     stockByBucket.set(t.bucketType, t.runningTotal)
   })
 
@@ -279,9 +283,9 @@ function calculateInventoryMetrics(
   )
   const currentStockLevel = Math.min((totalStock / 1000) * 100, 100)
 
-  // Find most active bucket type
+  // Find most active bucket type (excluding FREE_DEF)
   const bucketActivity = new Map<BucketType, number>()
-  transactions.forEach((t) => {
+  filteredTransactions.forEach((t) => {
     const current = bucketActivity.get(t.bucketType) || 0
     bucketActivity.set(t.bucketType, current + Math.abs(t.quantity))
   })
@@ -293,13 +297,13 @@ function calculateInventoryMetrics(
         )
       : null
 
-  // Warehouse activity
+  // Warehouse activity (excluding FREE_DEF)
   const warehouseMap = new Map<
     Warehouse,
     { stocked: number; sold: number }
   >()
 
-  transactions.forEach((t) => {
+  filteredTransactions.forEach((t) => {
     const existing = warehouseMap.get(t.warehouse) || { stocked: 0, sold: 0 }
     if (t.action === 'STOCK') {
       existing.stocked += t.quantity
