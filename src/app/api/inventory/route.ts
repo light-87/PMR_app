@@ -135,27 +135,18 @@ export async function POST(request: NextRequest) {
         // Check if StockTransaction table exists by attempting to find one record
         await prisma.stockTransaction.findFirst({ take: 1 })
 
-        if (validatedData.action === 'STOCK') {
-          // Filling buckets: subtract from Free DEF
-          await createStockTransaction({
-            date: validatedData.date,
-            type: 'FILL_BUCKETS',
-            category: 'FREE_DEF',
-            quantity: -(validatedData.quantity * bucketSize),
-            unit: 'LITERS',
-            description: `Filled ${validatedData.quantity}x ${validatedData.bucketType} (${validatedData.quantity * bucketSize}L) at ${validatedData.warehouse}`,
-          })
-        } else if (validatedData.action === 'SELL') {
-          // Selling buckets: subtract from Finished Goods
+        if (validatedData.action === 'SELL') {
+          // Selling buckets: fill them first (subtract from Free DEF), then sell
           await createStockTransaction({
             date: validatedData.date,
             type: 'SELL_BUCKETS',
-            category: 'FINISHED_GOODS',
+            category: 'FREE_DEF',
             quantity: -(validatedData.quantity * bucketSize),
             unit: 'LITERS',
             description: `Sold ${validatedData.quantity}x ${validatedData.bucketType} (${validatedData.quantity * bucketSize}L) to ${validatedData.buyerSeller}`,
           })
         }
+        // Note: STOCK action does nothing to Free DEF - buckets are empty containers
       } catch (stockError) {
         // Table doesn't exist yet or other error - silently skip stock tracking
         console.log('Stock tracking not available yet (migration pending)')

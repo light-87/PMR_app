@@ -37,13 +37,14 @@ Shows real-time stock levels for all materials:
   - Filled into buckets, OR
   - Sold directly to customers (loose/bulk)
 
-**Buckets (Packaged Product)**
-- Total liters in all buckets across warehouses
-- Calculated from bucket inventory (all bucket types combined)
+**Buckets (Empty Containers)**
+- Empty buckets in inventory across warehouses
+- Shown in liters capacity (not filled)
+- Buckets are filled with Free DEF when sold
 
 **Finished Goods (Total)**
-- Total finished product = Free DEF + Buckets
-- Represents complete production output
+- Total finished product = Free DEF Available
+- Represents complete production output ready for sale
 
 **Color-Coded Status:**
 - 🟢 Green: Good stock levels
@@ -89,11 +90,12 @@ Step 1: Purchase Urea
 Step 2: Production (360kg Urea → 1000L Free DEF)
          ↓
 Step 3: Free DEF can be:
-         - Filled into Buckets (via Inventory page)
          - Sold directly as loose DEF (via Inventory page)
+         - Used to fill buckets when selling them (automatic)
          ↓
-Step 4: Buckets can be:
-         - Sold to customers (via Inventory page)
+Step 4: Empty buckets are:
+         - Added to inventory (via Inventory page)
+         - Filled with Free DEF and sold (via Inventory page)
 ```
 
 ### Stock Categories Explained
@@ -103,17 +105,19 @@ Step 4: Buckets can be:
 - Used for production only
 - Decreases when producing batches
 
-**2. FREE_DEF (Loose Product)**
+**2. FREE_DEF (Finished Product)**
 - Created during production
+- This is your total finished goods available
 - Decreases when:
-  - Filling buckets
   - Selling loose DEF to customers
+  - Selling buckets (filled before sale)
 - Increases when: Producing batches
 
-**3. FINISHED_GOODS (Total Output)**
-- Increases when: Producing batches
-- Decreases when: Selling loose DEF
-- Does NOT decrease when filling buckets (internal transfer)
+**3. BUCKETS (Empty Containers)**
+- Empty containers stored in inventory
+- Do NOT contain Free DEF until sold
+- When sold, they are automatically filled from Free DEF stock
+- Tracked in inventory but have zero product value until filled
 
 ---
 
@@ -170,15 +174,13 @@ Step 4: Buckets can be:
 
 **Result:**
 - Urea stock decreases
-- Free DEF stock increases
-- Finished Goods increases
+- Free DEF stock increases (this is your finished goods)
 - Single grouped transaction in log
 
 **Transaction Display:**
 - Production transactions appear as **one combined card** showing:
   - Urea Used: -360 kg
   - Free DEF Produced: +1000 L
-  - Finished Goods: +1000 L
 
 ---
 
@@ -200,16 +202,15 @@ Step 4: Buckets can be:
 
 **Result:**
 - Free DEF stock decreases
-- Finished Goods decreases
 - Transaction recorded in StockBoard log
 
 ---
 
-### 4. Filling Buckets
+### 4. Adding Empty Buckets to Inventory
 
 **Where:** Inventory page → "Add Entry" → Stock
 
-**When to use:** Packaging Free DEF into buckets for storage/sale
+**When to use:** Receiving new empty buckets/containers into inventory
 
 **Steps:**
 1. Go to Inventory page
@@ -218,19 +219,19 @@ Step 4: Buckets can be:
 4. Select bucket type (TATA_G, AL, AP_BLUE, etc.)
 5. Select "Stock" action
 6. Enter quantity of buckets
-7. Enter buyer/seller name
+7. Enter supplier/source name
 8. Select date
 9. Click "Add Entry"
 
-**System Auto-Calculation:**
-- Automatically calculates liters needed
-- Example: Stocking 10 × AP_BLUE buckets = 200 liters (20L each)
+**Important Notes:**
+- These are EMPTY containers (not filled with DEF)
+- Free DEF stock does NOT change
+- Only the bucket inventory count increases
 
 **Result:**
-- Free DEF decreases (used for filling)
-- Bucket inventory increases
-- Finished Goods stays the same (internal transfer)
-- Transaction recorded in both Inventory and StockBoard
+- Bucket inventory increases (count only)
+- No change to Free DEF
+- Transaction recorded in Inventory page
 
 ---
 
@@ -238,7 +239,7 @@ Step 4: Buckets can be:
 
 **Where:** Inventory page → "Add Entry" → Sell
 
-**When to use:** Selling packaged buckets to customers
+**When to use:** Selling filled buckets to customers
 
 **Steps:**
 1. Go to Inventory page
@@ -251,9 +252,13 @@ Step 4: Buckets can be:
 8. Select date
 9. Click "Add Entry"
 
+**What Happens Behind the Scenes:**
+- System fills the buckets with Free DEF before sale
+- Example: Selling 10 × 20L buckets uses 200L of Free DEF
+
 **Result:**
 - Bucket inventory decreases
-- Finished Goods decreases
+- Free DEF decreases (used to fill buckets)
 - Transaction recorded in both Inventory and StockBoard
 
 ---
@@ -288,16 +293,19 @@ Step 4: Buckets can be:
   - Can Produce: (720 ÷ 360) × 1000 = 2,000 liters
 
 **Free DEF Section:**
-- Shows available loose DEF (not in buckets)
-- Can be used for filling buckets or selling directly
+- Shows available Free DEF
+- This is your total finished goods
+- Can be sold directly or used to fill buckets when selling
 
 **Buckets Section:**
-- Calculated from Inventory transactions
-- Combines all bucket types across both warehouses
+- Shows empty buckets in inventory
+- Calculated from Inventory transactions (all bucket types across warehouses)
+- Displayed in liters capacity (not filled)
 - Formula: Sum of (bucket count × bucket size) for each type
 
 **Finished Goods Section:**
-- Total output: Free DEF + Buckets (in liters)
+- Total output: Free DEF Available
+- Buckets are NOT counted (they're empty until sold)
 - Represents complete inventory ready for sale
 
 ---
@@ -322,17 +330,12 @@ Step 4: Buckets can be:
 - Color: Red
 - Shows: Free DEF sold, customer info
 
-**4. FILL_BUCKETS**
-- Icon: Trending Down (📉)
-- Color: Orange
-- Auto-created from Inventory "Stock" action
-- Shows: Free DEF used for filling buckets
-
-**5. SELL_BUCKETS**
+**4. SELL_BUCKETS**
 - Icon: Trending Down (📉)
 - Color: Red
 - Auto-created from Inventory "Sell" action
-- Shows: Finished Goods sold via buckets
+- Shows: Free DEF used to fill and sell buckets
+- Note: Stocking empty buckets does NOT create a transaction
 
 ### Reading Transaction Cards
 
@@ -349,10 +352,9 @@ Step 4: Buckets can be:
 
 **Production Batch Cards (Special):**
 - Purple background
-- Shows all 3 impacts in one card:
+- Shows both impacts in one card:
   - Urea Used (red)
   - Free DEF Produced (green)
-  - Finished Goods (green)
 
 ---
 
@@ -400,15 +402,15 @@ All StockBoard transactions are automatically included in system backups:
 4. Confirm production
 5. Free DEF stock increases
 
-**Packaging:**
+**Inventory Management:**
 1. Go to Inventory page
-2. Fill buckets as needed for orders
-3. Free DEF decreases, Bucket inventory increases
+2. Add empty buckets to inventory (Stock action)
+3. Bucket inventory increases (no change to Free DEF)
 
 **Sales:**
-1. Sell buckets via Inventory page, OR
+1. Sell buckets via Inventory page (auto-fills from Free DEF), OR
 2. Sell Free DEF (loose) via Inventory page "Sell Free DEF" button
-3. Finished Goods decreases
+3. Free DEF decreases in both cases
 
 ### Weekly Review Workflow
 
@@ -435,12 +437,9 @@ All StockBoard transactions are automatically included in system backups:
 - Cannot produce batches if insufficient
 
 **When Free DEF is Low:**
-- Cannot fill buckets if insufficient
-- Warning appears when trying to fill/sell
-
-**When Finished Goods is Low:**
-- Indicates need for more production
-- Time to add Urea and produce batches
+- Cannot sell buckets if insufficient Free DEF to fill them
+- Warning appears when trying to sell buckets or loose DEF
+- Time to produce more batches
 
 ### Permissions Summary
 
@@ -516,8 +515,8 @@ This creates the StockTransaction table in the production database.
 **Q: What happens if I produce a batch without enough Urea?**
 A: The system prevents it. You'll see a red warning with the exact amount needed vs. available.
 
-**Q: Why doesn't Finished Goods decrease when filling buckets?**
-A: Filling buckets is an internal transfer (Free DEF → Buckets). Total finished goods stays the same. Only selling decreases Finished Goods.
+**Q: Why doesn't Free DEF decrease when adding buckets to inventory?**
+A: Because buckets are empty containers. They're only filled with Free DEF when you sell them to customers.
 
 **Q: Can non-admin users see transaction history?**
 A: Yes! All users can view the complete transaction log and stock levels.

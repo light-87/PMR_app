@@ -61,29 +61,28 @@ export function StockOverviewCard({ summary }: StockOverviewCardProps) {
         <CardContent>
           <div className="space-y-3">
             <div>
-              <div className="text-sm text-green-700 font-medium mb-1">Total Available</div>
+              <div className="text-sm text-green-700 font-medium mb-1">
+                Free DEF Available
+              </div>
               <div className="text-3xl font-bold text-green-900">
                 {summary.finishedGoods.toLocaleString()} L
               </div>
+              <div className="text-xs text-green-600 mt-1">
+                Ready to sell or fill into buckets
+              </div>
             </div>
-            <div className="pt-2 border-t border-green-200 space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center text-sm text-green-700">
-                  <Beaker className="h-4 w-4 mr-1" />
-                  Free DEF (Loose)
+            <div className="pt-2 border-t border-green-200">
+              <div className="flex justify-between items-center text-sm text-green-700">
+                <div className="flex items-center">
+                  <Package2 className="h-4 w-4 mr-1" />
+                  Empty Buckets (inventory)
                 </div>
-                <div className="font-semibold text-green-900">
-                  {summary.freeDEF.toLocaleString()} L
+                <div className="font-medium text-green-900">
+                  {summary.bucketsInLiters.toLocaleString()} L capacity
                 </div>
               </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center text-sm text-green-700">
-                  <Package2 className="h-4 w-4 mr-1" />
-                  In Buckets
-                </div>
-                <div className="font-semibold text-green-900">
-                  {summary.bucketsInLiters.toLocaleString()} L
-                </div>
+              <div className="text-xs text-green-600 mt-1">
+                Buckets are filled when sold
               </div>
             </div>
           </div>

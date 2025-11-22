@@ -175,10 +175,9 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
   const ureaRunningTotal = ureaStock - totalUreaNeeded
   const freeDEFStock = await getCurrentStock(StockCategory.FREE_DEF)
   const freeDEFRunningTotal = freeDEFStock + totalLitersProduced
-  const finishedGoodsStock = await getCurrentStock(StockCategory.FINISHED_GOODS)
-  const finishedGoodsRunningTotal = finishedGoodsStock + totalLitersProduced
 
   // Create transactions in a transaction block
+  // Note: Finished Goods = Free DEF, so we don't create separate FINISHED_GOODS transaction
   const transactions = await prisma.$transaction([
     prisma.stockTransaction.create({
       data: {
@@ -200,17 +199,6 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
         unit: 'LITERS',
         description: `Production: ${batchCount} batch${batchCount !== 1 ? 'es' : ''} (+${totalLitersProduced}L Free DEF)`,
         runningTotal: freeDEFRunningTotal,
-      },
-    }),
-    prisma.stockTransaction.create({
-      data: {
-        date: data.date,
-        type: 'PRODUCE_BATCH',
-        category: 'FINISHED_GOODS',
-        quantity: totalLitersProduced,
-        unit: 'LITERS',
-        description: `Production: ${batchCount} batch${batchCount !== 1 ? 'es' : ''} (+${totalLitersProduced}L Finished Goods)`,
-        runningTotal: finishedGoodsRunningTotal,
       },
     }),
   ])
@@ -262,16 +250,28 @@ async function handleFillBuckets(data: z.infer<typeof createStockSchema>) {
 
 // Handle selling buckets (auto-called from inventory)
 async function handleSellBuckets(data: z.infer<typeof createStockSchema>) {
-  const finishedGoodsStock = await getCurrentStock(StockCategory.FINISHED_GOODS)
+  const freeDEFStock = await getCurrentStock(StockCategory.FREE_DEF)
   const litersToSubtract = Math.abs(data.quantity)
 
-  const newRunningTotal = finishedGoodsStock - litersToSubtract
+  // Check if enough Free DEF is available
+  if (freeDEFStock < litersToSubtract) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: `Insufficient Free DEF to fill buckets. Need ${litersToSubtract}L, have ${freeDEFStock}L`,
+        currentStock: freeDEFStock,
+      },
+      { status: 400 }
+    )
+  }
+
+  const newRunningTotal = freeDEFStock - litersToSubtract
 
   const transaction = await prisma.stockTransaction.create({
     data: {
       date: data.date,
       type: 'SELL_BUCKETS',
-      category: 'FINISHED_GOODS',
+      category: 'FREE_DEF',
       quantity: -litersToSubtract,
       unit: 'LITERS',
       description: data.description || `Sold buckets: -${litersToSubtract}L`,
@@ -306,11 +306,9 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
 
   const newRunningTotal = currentStock + data.quantity
 
-  // For SELL_FREE_DEF, also update FINISHED_GOODS and create InventoryTransaction
+  // For SELL_FREE_DEF, also create InventoryTransaction
+  // Note: Finished Goods = Free DEF, so we don't create separate FINISHED_GOODS transaction
   if (data.type === 'SELL_FREE_DEF') {
-    const finishedGoodsStock = await getCurrentStock(StockCategory.FINISHED_GOODS)
-    const finishedGoodsRunningTotal = finishedGoodsStock + data.quantity
-
     const transactions = await prisma.$transaction([
       // StockTransaction for FREE_DEF
       prisma.stockTransaction.create({
@@ -322,18 +320,6 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
           unit: data.unit,
           description: data.description,
           runningTotal: newRunningTotal,
-        },
-      }),
-      // StockTransaction for FINISHED_GOODS
-      prisma.stockTransaction.create({
-        data: {
-          date: data.date,
-          type: 'SELL_FREE_DEF',
-          category: 'FINISHED_GOODS',
-          quantity: data.quantity,
-          unit: 'LITERS',
-          description: `Sold Free DEF: ${data.quantity}L`,
-          runningTotal: finishedGoodsRunningTotal,
         },
       }),
       // InventoryTransaction for display in Inventory page
@@ -392,11 +378,11 @@ async function calculateStockSummary() {
   const ureaKg = await getCurrentStock(StockCategory.UREA)
   const freeDEF = await getCurrentStock(StockCategory.FREE_DEF)
 
-  // Calculate buckets in liters from inventory
+  // Calculate buckets in liters from inventory (for display purposes - they're empty)
   const bucketsInLiters = await calculateBucketsInLiters()
 
-  // Finished Goods = Free DEF (loose) + In Buckets (liters)
-  const finishedGoods = freeDEF + bucketsInLiters
+  // Finished Goods = Free DEF only (buckets are empty containers)
+  const finishedGoods = freeDEF
 
   return {
     ureaKg,
