@@ -166,6 +166,7 @@ model BackupLog {
   inventoryCount Int
   expenseCount   Int
   stockCount     Int      @default(0)
+  leadsCount     Int      @default(0)
   status         String   // "SUCCESS" or "FAILED"
   errorMessage   String?
 
@@ -181,4 +182,66 @@ model SystemSettings {
   key       String   @unique
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// LEADS MODULE
+// ============================================
+
+model Lead {
+  id               String       @id @default(cuid())
+
+  // Basic Info (minimal typing)
+  name             String
+  phone            String
+  company          String?      // Optional
+
+  // Status Tracking (all dropdowns!)
+  status           LeadStatus   @default(NEW)
+  priority         Priority     @default(MEDIUM)
+
+  // Call Tracking (auto dates + dropdowns)
+  lastCallDate     DateTime?    // Auto-filled when status changes
+  nextFollowUpDate DateTime?    // Date picker
+  callOutcome      CallOutcome? // Dropdown of what happened
+
+  // Notes (predefined options + optional free text)
+  quickNote        String?      // Dropdown selection
+  additionalNotes  String?      // Optional typing for extra details
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([nextFollowUpDate])
+  @@index([lastCallDate])
+}
+
+enum LeadStatus {
+  NEW              // Just added
+  NEED_TO_CALL     // Ready to call
+  CALLED           // Called today
+  GOT_RESPONSE     // They responded!
+  ON_HOLD          // Waiting/paused
+  CALL_IN_7_DAYS   // Schedule for next week
+  CONVERTED        // Success - became customer
+  NOT_INTERESTED   // Dead lead
+}
+
+enum Priority {
+  LOW      // Green
+  MEDIUM   // Yellow
+  HIGH     // Orange
+  URGENT   // Red
+}
+
+enum CallOutcome {
+  NO_ANSWER           // Didn't pick up
+  BUSY                // Said they're busy
+  INTERESTED          // Wants to know more
+  NEED_INFO           // Asked for details
+  CALL_BACK_LATER     // Said call again
+  WRONG_NUMBER        // Invalid contact
+  NOT_INTERESTED_NOW  // Not interested
 }

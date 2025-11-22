@@ -28,6 +28,7 @@ export function Header() {
     { href: '/stockboard', label: 'StockBoard', roles: ['ADMIN', 'EXPENSE_INVENTORY', 'INVENTORY_ONLY'] },
     { href: '/inventory', label: 'Inventory', roles: ['ADMIN', 'EXPENSE_INVENTORY', 'INVENTORY_ONLY'] },
     { href: '/daily-report', label: 'Daily Report', roles: ['ADMIN', 'EXPENSE_INVENTORY', 'INVENTORY_ONLY'] },
+    { href: '/leads', label: 'Leads', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
     { href: '/expenses', label: 'Expenses', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
     { href: '/search', label: 'Search', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
     { href: '/dashboard', label: 'Dashboard', roles: ['ADMIN'] },

@@ -12,6 +12,7 @@ interface BackupResult {
   inventoryCount: number
   expenseCount: number
   stockCount: number
+  leadsCount: number
   errorMessage?: string
 }
 
@@ -22,6 +23,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
   let inventoryCount = 0
   let expenseCount = 0
   let stockCount = 0
+  let leadsCount = 0
 
   try {
     // Fetch all inventory transactions
@@ -55,6 +57,31 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       stockCount = stockTransactions.length
     } catch (stockError) {
       console.log('Stock tracking not available yet in backup')
+    }
+
+    // Fetch all leads (if table exists)
+    let leads: Array<{
+      id: string
+      name: string
+      phone: string
+      company: string | null
+      status: string
+      priority: string
+      lastCallDate: Date | null
+      nextFollowUpDate: Date | null
+      callOutcome: string | null
+      quickNote: string | null
+      additionalNotes: string | null
+      createdAt: Date
+      updatedAt: Date
+    }> = []
+    try {
+      leads = await prisma.lead.findMany({
+        orderBy: { createdAt: 'asc' },
+      })
+      leadsCount = leads.length
+    } catch (leadsError) {
+      console.log('Leads not available yet in backup')
     }
 
     // Create Excel workbook
@@ -105,6 +132,31 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       XLSX.utils.book_append_sheet(workbook, stockSheet, 'Stock')
     }
 
+    // Create Leads sheet (if leads exist)
+    if (leads.length > 0) {
+      const leadsData = leads.map((lead) => ({
+        ID: lead.id,
+        Name: lead.name,
+        Phone: lead.phone,
+        Company: lead.company || '',
+        Status: lead.status,
+        Priority: lead.priority,
+        'Last Call Date': lead.lastCallDate
+          ? format(new Date(lead.lastCallDate), 'yyyy-MM-dd')
+          : '',
+        'Next Follow-Up': lead.nextFollowUpDate
+          ? format(new Date(lead.nextFollowUpDate), 'yyyy-MM-dd')
+          : '',
+        'Call Outcome': lead.callOutcome || '',
+        'Quick Note': lead.quickNote || '',
+        'Additional Notes': lead.additionalNotes || '',
+        'Created At': format(new Date(lead.createdAt), 'yyyy-MM-dd HH:mm:ss'),
+        'Updated At': format(new Date(lead.updatedAt), 'yyyy-MM-dd HH:mm:ss'),
+      }))
+      const leadsSheet = XLSX.utils.json_to_sheet(leadsData)
+      XLSX.utils.book_append_sheet(workbook, leadsSheet, 'Leads')
+    }
+
     // Generate Excel buffer
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
 
@@ -123,6 +175,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
         inventoryCount,
         expenseCount,
         stockCount,
+        leadsCount,
         status: 'SUCCESS',
       },
     })
@@ -134,6 +187,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       inventoryCount,
       expenseCount,
       stockCount,
+      leadsCount,
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -145,6 +199,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
         inventoryCount,
         expenseCount,
         stockCount,
+        leadsCount,
         status: 'FAILED',
         errorMessage,
       },
@@ -155,6 +210,7 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       inventoryCount,
       expenseCount,
       stockCount,
+      leadsCount,
       errorMessage,
     }
   }

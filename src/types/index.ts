@@ -143,6 +143,8 @@ export interface BackupLog {
   driveFileId?: string
   inventoryCount: number
   expenseCount: number
+  stockCount: number
+  leadsCount: number
   status: string
   errorMessage?: string
 }
@@ -376,4 +378,120 @@ export interface DailyReportResponse {
   success: boolean
   data?: DailyReportData
   error?: string
+}
+
+// Lead Types
+export type LeadStatus =
+  | 'NEW'
+  | 'NEED_TO_CALL'
+  | 'CALLED'
+  | 'GOT_RESPONSE'
+  | 'ON_HOLD'
+  | 'CALL_IN_7_DAYS'
+  | 'CONVERTED'
+  | 'NOT_INTERESTED'
+
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+
+export type CallOutcome =
+  | 'NO_ANSWER'
+  | 'BUSY'
+  | 'INTERESTED'
+  | 'NEED_INFO'
+  | 'CALL_BACK_LATER'
+  | 'WRONG_NUMBER'
+  | 'NOT_INTERESTED_NOW'
+
+export interface Lead {
+  id: string
+  name: string
+  phone: string
+  company?: string
+  status: LeadStatus
+  priority: Priority
+  lastCallDate?: string
+  nextFollowUpDate?: string
+  callOutcome?: CallOutcome
+  quickNote?: string
+  additionalNotes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface LeadInput {
+  name: string
+  phone: string
+  company?: string
+  status?: LeadStatus
+  priority?: Priority
+  nextFollowUpDate?: Date
+  callOutcome?: CallOutcome
+  quickNote?: string
+  additionalNotes?: string
+}
+
+export interface LeadResponse {
+  leads: Lead[]
+  total: number
+}
+
+// Lead Display Labels
+export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
+  NEW: 'New',
+  NEED_TO_CALL: 'Need to Call',
+  CALLED: 'Called',
+  GOT_RESPONSE: 'Got Response',
+  ON_HOLD: 'On Hold',
+  CALL_IN_7_DAYS: 'Call in 7 Days',
+  CONVERTED: 'Converted',
+  NOT_INTERESTED: 'Not Interested',
+}
+
+export const PRIORITY_LABELS: Record<Priority, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent',
+}
+
+export const CALL_OUTCOME_LABELS: Record<CallOutcome, string> = {
+  NO_ANSWER: "Didn't pick up",
+  BUSY: 'Said they are busy',
+  INTERESTED: 'Wants to know more',
+  NEED_INFO: 'Asked for details',
+  CALL_BACK_LATER: 'Call back later',
+  WRONG_NUMBER: 'Wrong number',
+  NOT_INTERESTED_NOW: 'Not interested',
+}
+
+export const QUICK_NOTE_OPTIONS = [
+  'Interested in product',
+  'Need to send quote',
+  'Waiting for decision',
+  'Asked to call back',
+  'Not available - try later',
+  'Wrong number',
+  'Already has supplier',
+  'Budget constraints',
+  'Will contact us',
+]
+
+// Priority colors for UI
+export const PRIORITY_COLORS: Record<Priority, string> = {
+  LOW: 'bg-green-100 text-green-800 border-green-300',
+  MEDIUM: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  HIGH: 'bg-orange-100 text-orange-800 border-orange-300',
+  URGENT: 'bg-red-100 text-red-800 border-red-300',
+}
+
+// Status colors for UI
+export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
+  NEW: 'bg-blue-100 text-blue-800 border-blue-300',
+  NEED_TO_CALL: 'bg-purple-100 text-purple-800 border-purple-300',
+  CALLED: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  GOT_RESPONSE: 'bg-green-100 text-green-800 border-green-300',
+  ON_HOLD: 'bg-gray-100 text-gray-800 border-gray-300',
+  CALL_IN_7_DAYS: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  CONVERTED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  NOT_INTERESTED: 'bg-red-100 text-red-800 border-red-300',
 }
