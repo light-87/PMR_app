@@ -280,3 +280,100 @@ export const STOCK_CATEGORY_LABELS: Record<StockCategory, string> = {
   FREE_DEF: 'Free DEF',
   FINISHED_GOODS: 'Finished Goods',
 }
+
+// Daily Report Types
+export interface FinancialMetrics {
+  totalIncome: number
+  totalExpense: number
+  netProfit: number
+  transactionCount: number
+  topAccount: {
+    account: ExpenseAccount
+    amount: number
+  } | null
+  accountBreakdown: {
+    account: ExpenseAccount
+    income: number
+    expense: number
+  }[]
+  comparison: {
+    incomeTrend: number // percentage change from previous day
+    expenseTrend: number
+    netTrend: number
+  }
+}
+
+export interface InventoryMetrics {
+  totalBucketsMoved: number
+  bucketsStocked: number
+  bucketsSold: number
+  activeBucketTypes: number
+  currentStockLevel: number // percentage
+  mostActiveBucket: {
+    type: BucketType
+    quantity: number
+  } | null
+  warehouseActivity: {
+    warehouse: Warehouse
+    stocked: number
+    sold: number
+  }[]
+}
+
+export interface ProductionMetrics {
+  litersProduced: number
+  ureaConsumed: number
+  batchesCompleted: number
+  freeDEFSold: number
+  currentUreaStock: number
+  productionEfficiency: number // percentage
+}
+
+export interface HealthMetrics {
+  overallScore: number // 0-100
+  status: 'EXCELLENT' | 'GOOD' | 'ATTENTION_NEEDED' | 'CRITICAL'
+  alerts: {
+    type: 'NEGATIVE_CASH_FLOW' | 'LOW_STOCK' | 'LOW_UREA' | 'NO_PRODUCTION'
+    severity: 'HIGH' | 'MEDIUM' | 'LOW'
+    message: string
+  }[]
+  totalActivities: number
+  operationalEfficiency: number // percentage
+}
+
+export type TimelineItemType = 'EXPENSE' | 'INVENTORY' | 'STOCK'
+
+export interface TimelineItem {
+  id: string
+  time: string // ISO datetime
+  type: TimelineItemType
+  icon: string
+  title: string
+  description: string
+  amount?: number
+  details: Record<string, unknown>
+  colorClass: string
+}
+
+export interface QuickInsight {
+  id: string
+  type: 'SUCCESS' | 'WARNING' | 'INFO' | 'TIP'
+  icon: string
+  message: string
+}
+
+export interface DailyReportData {
+  date: string
+  financial: FinancialMetrics
+  inventory: InventoryMetrics
+  production: ProductionMetrics
+  health: HealthMetrics
+  timeline: TimelineItem[]
+  insights: QuickInsight[]
+}
+
+export interface DailyReportResponse {
+  success: boolean
+  data?: DailyReportData
+  error?: string
+}
