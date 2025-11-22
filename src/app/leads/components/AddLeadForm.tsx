@@ -264,16 +264,16 @@ export function AddLeadForm({ open, onClose, onSuccess, editLead }: AddLeadFormP
           <div className="space-y-2">
             <Label>What Happened on Last Call? (Optional)</Label>
             <Select
-              value={selectedCallOutcome || ''}
+              value={selectedCallOutcome || 'NONE'}
               onValueChange={(value) =>
-                setValue('callOutcome', value ? (value as CallOutcome) : undefined)
+                setValue('callOutcome', value !== 'NONE' ? (value as CallOutcome) : undefined)
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select outcome" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="NONE">None</SelectItem>
                 {Object.entries(CALL_OUTCOME_LABELS).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
@@ -287,14 +287,14 @@ export function AddLeadForm({ open, onClose, onSuccess, editLead }: AddLeadFormP
           <div className="space-y-2">
             <Label>Quick Note (Optional)</Label>
             <Select
-              value={selectedQuickNote || ''}
-              onValueChange={(value) => setValue('quickNote', value || '')}
+              value={selectedQuickNote || 'NONE'}
+              onValueChange={(value) => setValue('quickNote', value !== 'NONE' ? value : '')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a common note" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="NONE">None</SelectItem>
                 {QUICK_NOTE_OPTIONS.map((note) => (
                   <SelectItem key={note} value={note}>
                     {note}
