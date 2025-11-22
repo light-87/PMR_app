@@ -279,6 +279,7 @@ async function getBucketSize(bucketType: BucketType): Promise<number> {
   const BUCKET_SIZES: Record<BucketType, number> = {
     TATA_G: 50,
     TATA_W: 50,
+    TATA_HP: 20,
     AL_10_LTR: 10,
     AL: 50,
     BB: 50,
