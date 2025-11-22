@@ -12,6 +12,7 @@ import { RestoreManager } from './components/RestoreManager'
 import { BulkUploadForm } from './components/BulkUploadForm'
 import { DeleteRecentImport } from './components/DeleteRecentImport'
 import { FactoryReset } from './components/FactoryReset'
+import { BucketTypeManager } from './components/BucketTypeManager'
 
 export default function AdminPage() {
   const [pins, setPins] = useState({
@@ -77,6 +78,8 @@ export default function AdminPage() {
             {message}
           </div>
         )}
+
+        <BucketTypeManager />
 
         <Card>
           <CardHeader>

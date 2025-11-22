@@ -2,16 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
-import { BucketType, Warehouse, ActionType } from '@prisma/client'
+import { Warehouse, ActionType } from '@prisma/client'
 import { BUCKET_SIZES } from '@/types'
 
 export const dynamic = 'force-dynamic'
+
+// Helper function to get bucket size from database or fallback to legacy
+async function getBucketSize(bucketTypeCode: string): Promise<number> {
+  try {
+    const bucketType = await prisma.bucketTypeConfig.findUnique({
+      where: { code: bucketTypeCode },
+      select: { capacityLiters: true },
+    })
+    if (bucketType) return bucketType.capacityLiters
+  } catch (error) {
+    console.log('BucketTypeConfig table not found, using legacy bucket sizes')
+  }
+  return BUCKET_SIZES[bucketTypeCode] || 0
+}
 
 // Validation schema for creating inventory transaction
 const createInventorySchema = z.object({
   date: z.string().transform(str => new Date(str)),
   warehouse: z.nativeEnum(Warehouse),
-  bucketType: z.nativeEnum(BucketType),
+  bucketType: z.string().min(1),
   action: z.nativeEnum(ActionType),
   quantity: z.number().positive(),
   buyerSeller: z.string().min(1),
@@ -129,7 +143,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Auto-update stock tracking (only if StockTransaction table exists)
-    const bucketSize = BUCKET_SIZES[validatedData.bucketType]
+    const bucketSize = await getBucketSize(validatedData.bucketType)
     if (bucketSize > 0) {
       try {
         // Check if StockTransaction table exists by attempting to find one record
@@ -174,7 +188,7 @@ export async function POST(request: NextRequest) {
 
 // Helper function to get current stock for a bucket+warehouse
 async function getCurrentStock(
-  bucketType: BucketType,
+  bucketType: string,
   warehouse: Warehouse
 ): Promise<number> {
   const lastTransaction = await prisma.inventoryTransaction.findFirst({
@@ -188,13 +202,25 @@ async function getCurrentStock(
 
 // Helper function to calculate stock summary
 async function calculateStockSummary() {
-  const bucketTypes = Object.values(BucketType)
-  const warehouses = Object.values(Warehouse)
+  // Get all active bucket types from database or fallback to legacy
+  let bucketTypeCodes: string[] = []
 
+  try {
+    const bucketTypes = await prisma.bucketTypeConfig.findMany({
+      where: { isActive: true },
+      select: { code: true },
+    })
+    bucketTypeCodes = bucketTypes.map(bt => bt.code)
+  } catch (error) {
+    console.log('BucketTypeConfig table not found, using legacy bucket types')
+    bucketTypeCodes = Object.keys(BUCKET_SIZES)
+  }
+
+  const warehouses = Object.values(Warehouse)
   const summary = []
 
-  for (const bucketType of bucketTypes) {
-    const row: { bucketType: BucketType; pallavi: number; tularam: number; total: number } = {
+  for (const bucketType of bucketTypeCodes) {
+    const row: { bucketType: string; pallavi: number; tularam: number; total: number } = {
       bucketType,
       pallavi: 0,
       tularam: 0,

@@ -10,21 +10,22 @@ export type PinRole = 'ADMIN' | 'EXPENSE_INVENTORY' | 'INVENTORY_ONLY'
 
 export type Warehouse = 'PALLAVI' | 'TULARAM' | 'FACTORY'
 
-export type BucketType =
-  | 'TATA_G'
-  | 'TATA_W'
-  | 'AL_10_LTR'
-  | 'AL'
-  | 'BB'
-  | 'ES'
-  | 'MH'
-  | 'MH_10_LTR'
-  | 'TATA_10_LTR'
-  | 'IBC_TANK'
-  | 'AP_BLUE'
-  | 'FREE_DEF'
+// BucketType is now a string (dynamic from database)
+export type BucketType = string
 
 export type ActionType = 'STOCK' | 'SELL'
+
+// Bucket Type Configuration (dynamic from database)
+export interface BucketTypeConfig {
+  id: string
+  code: string
+  name: string
+  capacityLiters: number
+  isActive: boolean
+  isSystem: boolean
+  createdAt: string
+  updatedAt: string
+}
 
 export type ExpenseAccount =
   | 'CASH'
@@ -164,24 +165,9 @@ export interface ExpenseInput {
   name: string
 }
 
-// Display Labels
-export const BUCKET_TYPE_LABELS: Record<BucketType, string> = {
-  TATA_G: 'TATA G',
-  TATA_W: 'TATA W',
-  AL_10_LTR: 'AL 10 ltr',
-  AL: 'AL',
-  BB: 'BB',
-  ES: 'ES',
-  MH: 'MH',
-  MH_10_LTR: 'MH 10 Ltr',
-  TATA_10_LTR: 'TATA 10 Ltr',
-  IBC_TANK: 'IBC tank',
-  AP_BLUE: 'AP Blue',
-  FREE_DEF: 'Free DEF',
-}
-
-// Bucket sizes in liters (0 for non-sellable items)
-export const BUCKET_SIZES: Record<BucketType, number> = {
+// Legacy bucket sizes for backwards compatibility with old transactions
+// New transactions will use dynamic bucket types from BucketTypeConfig
+export const BUCKET_SIZES: Record<string, number> = {
   TATA_G: 20,
   TATA_W: 20,
   AL_10_LTR: 10,
@@ -194,6 +180,15 @@ export const BUCKET_SIZES: Record<BucketType, number> = {
   IBC_TANK: 0, // Not counted as sellable product (for counting empty tanks)
   AP_BLUE: 20,
   FREE_DEF: 0, // Not counted (liters tracked separately in quantity field)
+}
+
+// Helper function to get bucket size (checks dynamic config first, falls back to legacy)
+export function getBucketSize(bucketTypeCode: string, bucketTypes?: BucketTypeConfig[]): number {
+  if (bucketTypes) {
+    const bucketType = bucketTypes.find(bt => bt.code === bucketTypeCode)
+    if (bucketType) return bucketType.capacityLiters
+  }
+  return BUCKET_SIZES[bucketTypeCode] || 0
 }
 
 export const ACCOUNT_LABELS: Record<ExpenseAccount, string> = {

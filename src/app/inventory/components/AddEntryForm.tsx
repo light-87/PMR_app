@@ -20,16 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { BUCKET_TYPE_LABELS, WAREHOUSE_LABELS } from '@/types'
-import type { BucketType, Warehouse, InventorySummary } from '@/types'
+import { WAREHOUSE_LABELS } from '@/types'
+import type { BucketType, BucketTypeConfig, Warehouse, InventorySummary } from '@/types'
 
 const formSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   warehouse: z.enum(['PALLAVI', 'TULARAM', 'FACTORY']),
-  bucketType: z.enum([
-    'TATA_G', 'TATA_W', 'AL_10_LTR', 'AL', 'BB',
-    'ES', 'MH', 'MH_10_LTR', 'TATA_10_LTR', 'IBC_TANK', 'AP_BLUE', 'FREE_DEF'
-  ]),
+  bucketType: z.string().min(1, 'Bucket type is required'),
   action: z.enum(['STOCK', 'SELL']),
   quantity: z.number().positive('Quantity must be positive'),
   buyerSeller: z.string().min(1, 'Buyer/Seller name is required'),
@@ -56,8 +53,29 @@ interface AddEntryFormProps {
 export function AddEntryForm({ open, onClose, onSuccess, summary, editTransaction }: AddEntryFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [bucketTypes, setBucketTypes] = useState<BucketTypeConfig[]>([])
+  const [loadingBucketTypes, setLoadingBucketTypes] = useState(true)
 
   const isEditMode = !!editTransaction
+
+  // Fetch bucket types on mount
+  useEffect(() => {
+    const fetchBucketTypes = async () => {
+      try {
+        const response = await fetch('/api/admin/bucket-types?activeOnly=true')
+        const data = await response.json()
+        if (data.success) {
+          setBucketTypes(data.bucketTypes)
+        }
+      } catch (error) {
+        console.error('Failed to fetch bucket types:', error)
+      } finally {
+        setLoadingBucketTypes(false)
+      }
+    }
+
+    fetchBucketTypes()
+  }, [])
 
   const {
     register,
@@ -214,18 +232,24 @@ export function AddEntryForm({ open, onClose, onSuccess, summary, editTransactio
               disabled={isEditMode && editTransaction?.bucketType === 'FREE_DEF'}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select bucket type" />
+                <SelectValue placeholder={loadingBucketTypes ? "Loading..." : "Select bucket type"} />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(BUCKET_TYPE_LABELS).map(([value, label]) => {
-                  // Hide FREE_DEF for new transactions (auto-created only)
-                  if (value === 'FREE_DEF' && !isEditMode) return null
-                  return (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  )
-                })}
+                {loadingBucketTypes ? (
+                  <SelectItem value="_loading" disabled>Loading bucket types...</SelectItem>
+                ) : (
+                  bucketTypes
+                    .filter(bt => {
+                      // Hide FREE_DEF for new transactions (auto-created only)
+                      if (bt.code === 'FREE_DEF' && !isEditMode) return false
+                      return true
+                    })
+                    .map(bucketType => (
+                      <SelectItem key={bucketType.code} value={bucketType.code}>
+                        {bucketType.name} ({bucketType.capacityLiters}L)
+                      </SelectItem>
+                    ))
+                )}
               </SelectContent>
             </Select>
             {errors.bucketType && (

@@ -38,7 +38,7 @@ model InventoryTransaction {
   id           String     @id @default(cuid())
   date         DateTime
   warehouse    Warehouse
-  bucketType   BucketType
+  bucketType   String     // Changed from enum to String for dynamic bucket types
   action       ActionType
   quantity     Int        // Signed: negative for Sell, positive for Stock
   buyerSeller  String
@@ -52,25 +52,25 @@ model InventoryTransaction {
   @@index([buyerSeller])
 }
 
+// Dynamic bucket type configuration
+model BucketTypeConfig {
+  id             String   @id @default(cuid())
+  code           String   @unique // AUTO_GENERATED from name (e.g., "TATA_G_BUCKET")
+  name           String   // Display name (e.g., "Tata G Bucket")
+  capacityLiters Int      // Bucket capacity in liters
+  isActive       Boolean  @default(true) // Soft delete flag
+  isSystem       Boolean  @default(false) // true for FREE_DEF (non-editable)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+}
+
 enum Warehouse {
   PALLAVI
   TULARAM
   FACTORY
-}
-
-enum BucketType {
-  TATA_G
-  TATA_W
-  AL_10_LTR
-  AL
-  BB
-  ES
-  MH
-  MH_10_LTR
-  TATA_10_LTR
-  IBC_TANK
-  AP_BLUE
-  FREE_DEF
 }
 
 enum ActionType {

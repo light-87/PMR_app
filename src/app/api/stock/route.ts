@@ -2,10 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
-import { StockTransactionType, StockCategory, StockUnit, BucketType } from '@prisma/client'
+import { StockTransactionType, StockCategory, StockUnit } from '@prisma/client'
 import { BUCKET_SIZES, UREA_PER_BATCH_KG, LITERS_PER_BATCH } from '@/types'
 
 export const dynamic = 'force-dynamic'
+
+// Helper function to get bucket size from database or fallback to legacy
+async function getBucketSize(bucketTypeCode: string): Promise<number> {
+  try {
+    const bucketType = await prisma.bucketTypeConfig.findUnique({
+      where: { code: bucketTypeCode },
+      select: { capacityLiters: true },
+    })
+    if (bucketType) return bucketType.capacityLiters
+  } catch (error) {
+    console.log('BucketTypeConfig table not found, using legacy bucket sizes')
+  }
+  return BUCKET_SIZES[bucketTypeCode] || 0
+}
 
 // Validation schema for creating stock transaction
 const createStockSchema = z.object({
@@ -396,22 +410,37 @@ async function calculateStockSummary() {
 
 // Calculate total liters in buckets from inventory
 async function calculateBucketsInLiters(): Promise<number> {
-  const bucketTypes = Object.values(BucketType)
+  // Get all active bucket types from the database
+  let bucketTypes: { code: string; capacityLiters: number }[] = []
+
+  try {
+    bucketTypes = await prisma.bucketTypeConfig.findMany({
+      where: { isActive: true },
+      select: { code: true, capacityLiters: true },
+    })
+  } catch (error) {
+    console.log('BucketTypeConfig table not found, using legacy bucket types')
+    // Fallback to legacy bucket types
+    bucketTypes = Object.entries(BUCKET_SIZES).map(([code, capacityLiters]) => ({
+      code,
+      capacityLiters,
+    }))
+  }
+
   let totalLiters = 0
 
   for (const bucketType of bucketTypes) {
-    const bucketSize = BUCKET_SIZES[bucketType]
-    if (bucketSize === 0) continue // Skip IBC_TANK
+    if (bucketType.capacityLiters === 0) continue // Skip types with 0 capacity
 
     // Get latest running total for each warehouse
     const pallavi = await prisma.inventoryTransaction.findFirst({
-      where: { bucketType, warehouse: 'PALLAVI' },
+      where: { bucketType: bucketType.code, warehouse: 'PALLAVI' },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       select: { runningTotal: true },
     })
 
     const tularam = await prisma.inventoryTransaction.findFirst({
-      where: { bucketType, warehouse: 'TULARAM' },
+      where: { bucketType: bucketType.code, warehouse: 'TULARAM' },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       select: { runningTotal: true },
     })
@@ -420,7 +449,7 @@ async function calculateBucketsInLiters(): Promise<number> {
     const tularamStock = tularam?.runningTotal || 0
     const totalBuckets = pallaviStock + tularamStock
 
-    totalLiters += totalBuckets * bucketSize
+    totalLiters += totalBuckets * bucketType.capacityLiters
   }
 
   return totalLiters
