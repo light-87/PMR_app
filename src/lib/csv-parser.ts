@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Warehouse, BucketType, ActionType, ExpenseAccount, TransactionType } from '@prisma/client'
+import { Warehouse, ActionType, ExpenseAccount, TransactionType } from '@prisma/client'
 
 // Helper function to parse dates in various formats
 function parseDate(val: string): Date {
@@ -43,29 +43,10 @@ function normalizeWarehouse(val: string): Warehouse {
 }
 
 // Helper function to normalize bucket types
-function normalizeBucketType(val: string): BucketType {
+// Note: Bucket types are now dynamic, so we just normalize the string
+function normalizeBucketType(val: string): string {
   // Replace spaces with underscores and convert to uppercase
-  const normalized = val.trim().toUpperCase().replace(/\s+/g, '_')
-
-  // Map common variations
-  const mapping: Record<string, BucketType> = {
-    'TATA_G': BucketType.TATA_G,
-    'TATA_W': BucketType.TATA_W,
-    'AL_10_LTR': BucketType.AL_10_LTR,
-    'AL': BucketType.AL,
-    'BB': BucketType.BB,
-    'ES': BucketType.ES,
-    'MH': BucketType.MH,
-    'MH_10_LTR': BucketType.MH_10_LTR,
-    'TATA_10_LTR': BucketType.TATA_10_LTR,
-    'IBC_TANK': BucketType.IBC_TANK,
-  }
-
-  if (mapping[normalized]) {
-    return mapping[normalized]
-  }
-
-  throw new Error(`Invalid bucket type: ${val}`)
+  return val.trim().toUpperCase().replace(/\s+/g, '_')
 }
 
 // Helper function to normalize action types
@@ -145,7 +126,7 @@ const expenseRowSchema = z.tuple([
 export type InventoryRow = {
   Date: Date
   Warehouse: Warehouse
-  BucketType: BucketType
+  BucketType: string
   Action: ActionType
   Quantity: number
   BuyerSeller: string

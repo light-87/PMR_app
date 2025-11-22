@@ -5,7 +5,7 @@ import { createBackup } from '@/lib/backup'
 import { parseExcelFile } from '@/lib/excel-parser'
 import { prisma } from '@/lib/prisma'
 import * as XLSX from 'xlsx'
-import { Warehouse, BucketType, ActionType, ExpenseAccount, TransactionType } from '@prisma/client'
+import { Warehouse, ActionType, ExpenseAccount, TransactionType } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
             data: {
               date: parseBackupDate(row.Date),
               warehouse: row.Warehouse as Warehouse,
-              bucketType: row['Bucket Type'] as BucketType,
+              bucketType: row['Bucket Type'] as string,
               action: row.Action as ActionType,
               quantity: Number(row.Quantity),
               buyerSeller: row['Buyer/Seller'] || 'N/A',

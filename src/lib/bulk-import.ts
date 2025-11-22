@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { ParsedExcelData, InventoryRow, ExpenseRow } from '@/lib/excel-parser'
-import { BucketType, Warehouse } from '@prisma/client'
+import { Warehouse } from '@prisma/client'
 
 export interface ImportError {
   type: 'inventory' | 'expense'
@@ -19,7 +19,7 @@ export interface ImportResult {
  * Get the current stock for a bucket+warehouse combination
  */
 async function getCurrentStock(
-  bucketType: BucketType,
+  bucketType: string,
   warehouse: Warehouse
 ): Promise<number> {
   const lastTransaction = await prisma.inventoryTransaction.findFirst({

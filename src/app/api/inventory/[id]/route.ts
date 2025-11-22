@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
-import { BucketType, Warehouse, ActionType, StockCategory } from '@prisma/client'
+import { Warehouse, ActionType, StockCategory } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 const updateInventorySchema = z.object({
   date: z.string().transform(str => new Date(str)).optional(),
   warehouse: z.nativeEnum(Warehouse).optional(),
-  bucketType: z.nativeEnum(BucketType).optional(),
+  bucketType: z.string().min(1).optional(),
   action: z.nativeEnum(ActionType).optional(),
   quantity: z.number().positive().optional(),
   buyerSeller: z.string().min(1).optional(),
