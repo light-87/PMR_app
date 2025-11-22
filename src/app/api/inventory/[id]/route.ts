@@ -229,7 +229,7 @@ export async function DELETE(
 
 // Helper function to recalculate all running totals for a bucket+warehouse
 async function recalculateRunningTotals(
-  bucketType: BucketType,
+  bucketType: string,
   warehouse: Warehouse
 ) {
   // Get all transactions for this combination, ordered by date
@@ -275,8 +275,8 @@ async function recalculateStockRunningTotals(
 }
 
 // Helper function to get bucket size
-async function getBucketSize(bucketType: BucketType): Promise<number> {
-  const BUCKET_SIZES: Record<BucketType, number> = {
+async function getBucketSize(bucketType: string): Promise<number> {
+  const BUCKET_SIZES: Record<string, number> = {
     TATA_G: 50,
     TATA_W: 50,
     AL_10_LTR: 10,

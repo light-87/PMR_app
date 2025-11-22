@@ -3,7 +3,7 @@
 import { format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { BUCKET_TYPE_LABELS, WAREHOUSE_LABELS } from '@/types'
+import { WAREHOUSE_LABELS } from '@/types'
 import type { InventoryTransaction } from '@/types'
 import { Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -71,7 +71,7 @@ export function TransactionLog({
                       {WAREHOUSE_LABELS[transaction.warehouse]}
                     </td>
                     <td className="p-3">
-                      {BUCKET_TYPE_LABELS[transaction.bucketType]}
+                      {transaction.bucketType}
                     </td>
                     <td className="text-center p-3">
                       <span

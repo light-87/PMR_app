@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const date = searchParams.get('date')
     const warehouse = searchParams.get('warehouse') as Warehouse | null
-    const bucketType = searchParams.get('bucketType') as BucketType | null
+    const bucketType = searchParams.get('bucketType') as string | null
 
     // Build filter conditions
     const where: Record<string, unknown> = {}

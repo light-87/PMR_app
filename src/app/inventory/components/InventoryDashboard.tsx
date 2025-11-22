@@ -1,7 +1,6 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BUCKET_TYPE_LABELS } from '@/types'
 import type { BucketType } from '@/types'
 
 interface InventorySummary {
@@ -36,7 +35,7 @@ export function InventoryDashboard({ summary }: InventoryDashboardProps) {
               {summary.map((row) => (
                 <tr key={row.bucketType} className="border-b hover:bg-muted/30">
                   <td className="p-3 font-medium">
-                    {BUCKET_TYPE_LABELS[row.bucketType]}
+                    {row.bucketType}
                   </td>
                   <td className="text-center p-3">{row.pallavi}</td>
                   <td className="text-center p-3">{row.tularam}</td>
