@@ -18,7 +18,9 @@ import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { formatCurrency } from '@/lib/utils'
 import { ACCOUNT_LABELS } from '@/types'
 import type { ExpenseTransaction, ExpenseAccount, TransactionType } from '@/types'
-import { Search as SearchIcon, Printer } from 'lucide-react'
+import { Search as SearchIcon, Printer, Pencil, Trash2 } from 'lucide-react'
+import { AddExpenseForm } from '@/app/expenses/components/AddExpenseForm'
+import { useAuthStore } from '@/store/authStore'
 
 export default function SearchPage() {
   const [names, setNames] = useState<string[]>([])
@@ -35,6 +37,11 @@ export default function SearchPage() {
     totalIncome: number
     totalExpense: number
   } | null>(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<ExpenseTransaction | null>(null)
+  const { role } = useAuthStore()
+
+  const isAdmin = role === 'ADMIN'
 
   useEffect(() => {
     fetchNames()
@@ -93,6 +100,30 @@ export default function SearchPage() {
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleEdit = (transaction: ExpenseTransaction) => {
+    setEditingTransaction(transaction)
+    setShowAddForm(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this transaction?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/expenses/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Refresh the search results after deletion
+        handleSearch()
+      }
+    } catch (error) {
+      console.error('Failed to delete transaction:', error)
+    }
   }
 
   const getFilterSummary = () => {
@@ -386,6 +417,9 @@ export default function SearchPage() {
                           <th className="text-left p-3 font-semibold">Account</th>
                           <th className="text-center p-3 font-semibold">Type</th>
                           <th className="text-right p-3 font-semibold">Amount</th>
+                          {isAdmin && (
+                            <th className="text-center p-3 font-semibold">Actions</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -409,6 +443,28 @@ export default function SearchPage() {
                             <td className={`text-right p-3 font-medium ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
                               ₹{formatCurrency(Number(t.amount))}
                             </td>
+                            {isAdmin && (
+                              <td className="text-center p-3">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEdit(t)}
+                                    className="h-8 w-8"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDelete(t.id)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -441,6 +497,17 @@ export default function SearchPage() {
             </Card>
           )}
         </div>
+
+        <AddExpenseForm
+          open={showAddForm}
+          onClose={() => {
+            setShowAddForm(false)
+            setEditingTransaction(null)
+          }}
+          onSuccess={() => handleSearch()}
+          uniqueNames={names}
+          editTransaction={editingTransaction}
+        />
       </ProtectedLayout>
     </>
   )
