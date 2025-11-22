@@ -4,6 +4,7 @@ import { parseExcelFile, formatParseErrors } from '@/lib/excel-parser'
 import { bulkImportData, formatImportErrors } from '@/lib/bulk-import'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // Max 60 seconds for Vercel Pro (increase if needed)
 
 // Maximum file size: 10MB
 const MAX_FILE_SIZE = 10 * 1024 * 1024
