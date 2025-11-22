@@ -49,7 +49,9 @@ export async function bulkImportData(data: ParsedExcelData): Promise<ImportResul
     // Track running totals per warehouse+bucket combination
     const stockTracker = new Map<string, number>()
 
-    // Process inventory transactions
+    // Pre-calculate all inventory transactions with running totals
+    const inventoryTransactions = []
+
     for (let i = 0; i < sortedInventory.length; i++) {
       const row = sortedInventory[i]
       const key = `${row.Warehouse}_${row.BucketType}`
@@ -69,22 +71,19 @@ export async function bulkImportData(data: ParsedExcelData): Promise<ImportResul
         // Calculate new running total (allow negative stock)
         const newRunningTotal = currentStock + signedQuantity
 
-        // Create the transaction (allow overselling)
-        await prisma.inventoryTransaction.create({
-          data: {
-            date: row.Date,
-            warehouse: row.Warehouse,
-            bucketType: row.BucketType,
-            action: row.Action,
-            quantity: signedQuantity,
-            buyerSeller: row.BuyerSeller,
-            runningTotal: newRunningTotal,
-          },
+        // Add to batch
+        inventoryTransactions.push({
+          date: row.Date,
+          warehouse: row.Warehouse,
+          bucketType: row.BucketType,
+          action: row.Action,
+          quantity: signedQuantity,
+          buyerSeller: row.BuyerSeller,
+          runningTotal: newRunningTotal,
         })
 
         // Update tracker
         stockTracker.set(key, newRunningTotal)
-        inventoryImported++
       } catch (error) {
         errors.push({
           type: 'inventory',
@@ -94,27 +93,34 @@ export async function bulkImportData(data: ParsedExcelData): Promise<ImportResul
       }
     }
 
+    // Batch insert all inventory transactions at once
+    if (inventoryTransactions.length > 0) {
+      await prisma.inventoryTransaction.createMany({
+        data: inventoryTransactions,
+        skipDuplicates: false,
+      })
+      inventoryImported = inventoryTransactions.length
+    }
+
     // Sort expense data by date
     const sortedExpenses = [...data.expenses].sort((a, b) =>
       a.Date.getTime() - b.Date.getTime()
     )
 
-    // Process expense transactions
+    // Pre-calculate all expense transactions
+    const expenseTransactions = []
+
     for (let i = 0; i < sortedExpenses.length; i++) {
       const row = sortedExpenses[i]
 
       try {
-        await prisma.expenseTransaction.create({
-          data: {
-            date: row.Date,
-            amount: row.Amount,
-            account: row.Account,
-            type: row.Type,
-            name: row.Name,
-          },
+        expenseTransactions.push({
+          date: row.Date,
+          amount: row.Amount,
+          account: row.Account,
+          type: row.Type,
+          name: row.Name,
         })
-
-        expensesImported++
       } catch (error) {
         errors.push({
           type: 'expense',
@@ -122,6 +128,15 @@ export async function bulkImportData(data: ParsedExcelData): Promise<ImportResul
           message: error instanceof Error ? error.message : 'Failed to import row',
         })
       }
+    }
+
+    // Batch insert all expense transactions at once
+    if (expenseTransactions.length > 0) {
+      await prisma.expenseTransaction.createMany({
+        data: expenseTransactions,
+        skipDuplicates: false,
+      })
+      expensesImported = expenseTransactions.length
     }
 
     // If there were errors but some records were imported, it's a partial success

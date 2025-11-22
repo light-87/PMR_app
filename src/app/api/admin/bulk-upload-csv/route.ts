@@ -4,6 +4,7 @@ import { parseCSVFiles, formatParseErrors } from '@/lib/csv-parser'
 import { bulkImportData, formatImportErrors } from '@/lib/bulk-import'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // Max 60 seconds for Vercel Pro (increase if needed)
 
 // Maximum file size: 10MB per file
 const MAX_FILE_SIZE = 10 * 1024 * 1024
