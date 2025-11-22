@@ -62,6 +62,7 @@ enum Warehouse {
 enum BucketType {
   TATA_G
   TATA_W
+  TATA_HP
   AL_10_LTR
   AL
   BB

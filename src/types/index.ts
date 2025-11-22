@@ -13,6 +13,7 @@ export type Warehouse = 'PALLAVI' | 'TULARAM' | 'FACTORY'
 export type BucketType =
   | 'TATA_G'
   | 'TATA_W'
+  | 'TATA_HP'
   | 'AL_10_LTR'
   | 'AL'
   | 'BB'
@@ -168,6 +169,7 @@ export interface ExpenseInput {
 export const BUCKET_TYPE_LABELS: Record<BucketType, string> = {
   TATA_G: 'TATA G',
   TATA_W: 'TATA W',
+  TATA_HP: 'TATA HP',
   AL_10_LTR: 'AL 10 ltr',
   AL: 'AL',
   BB: 'BB',
@@ -184,6 +186,7 @@ export const BUCKET_TYPE_LABELS: Record<BucketType, string> = {
 export const BUCKET_SIZES: Record<BucketType, number> = {
   TATA_G: 20,
   TATA_W: 20,
+  TATA_HP: 20,
   AL_10_LTR: 10,
   AL: 20,
   BB: 20,
