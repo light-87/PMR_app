@@ -62,6 +62,7 @@ function normalizeBucketType(val: string): BucketType {
     'MH_10_LTR': BucketType.MH_10_LTR,
     'TATA_10_LTR': BucketType.TATA_10_LTR,
     'IBC_TANK': BucketType.IBC_TANK,
+    'INDIAN_OIL_20L': BucketType.INDIAN_OIL_20L,
   }
 
   if (mapping[normalized]) {

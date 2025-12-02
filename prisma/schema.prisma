@@ -72,6 +72,7 @@ enum BucketType {
   TATA_10_LTR
   IBC_TANK
   AP_BLUE
+  INDIAN_OIL_20L
   FREE_DEF
 }
 

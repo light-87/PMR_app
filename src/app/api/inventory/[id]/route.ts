@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
 import { BucketType, Warehouse, ActionType, StockCategory } from '@prisma/client'
+import { BUCKET_SIZES } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -276,20 +277,5 @@ async function recalculateStockRunningTotals(
 
 // Helper function to get bucket size
 async function getBucketSize(bucketType: BucketType): Promise<number> {
-  const BUCKET_SIZES: Record<BucketType, number> = {
-    TATA_G: 50,
-    TATA_W: 50,
-    TATA_HP: 20,
-    AL_10_LTR: 10,
-    AL: 50,
-    BB: 50,
-    ES: 50,
-    MH: 50,
-    MH_10_LTR: 10,
-    TATA_10_LTR: 10,
-    IBC_TANK: 0,
-    AP_BLUE: 20,
-    FREE_DEF: 0,
-  }
   return BUCKET_SIZES[bucketType] || 0
 }
