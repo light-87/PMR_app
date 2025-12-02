@@ -23,6 +23,7 @@ export type BucketType =
   | 'TATA_10_LTR'
   | 'IBC_TANK'
   | 'AP_BLUE'
+  | 'INDIAN_OIL_20L'
   | 'FREE_DEF'
 
 export type ActionType = 'STOCK' | 'SELL'
@@ -181,6 +182,7 @@ export const BUCKET_TYPE_LABELS: Record<BucketType, string> = {
   TATA_10_LTR: 'TATA 10 Ltr',
   IBC_TANK: 'IBC tank',
   AP_BLUE: 'AP Blue',
+  INDIAN_OIL_20L: 'Indian Oil 20 Ltr',
   FREE_DEF: 'Free DEF',
 }
 
@@ -198,6 +200,7 @@ export const BUCKET_SIZES: Record<BucketType, number> = {
   TATA_10_LTR: 10,
   IBC_TANK: 0, // Not counted as sellable product (for counting empty tanks)
   AP_BLUE: 20,
+  INDIAN_OIL_20L: 20,
   FREE_DEF: 0, // Not counted (liters tracked separately in quantity field)
 }
 
