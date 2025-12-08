@@ -84,6 +84,37 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       console.log('Leads not available yet in backup')
     }
 
+    // Fetch PIN codes for backup (authentication)
+    let pins: Array<{
+      id: string
+      pinNumber: string
+      role: string
+      createdAt: Date
+      updatedAt: Date
+    }> = []
+    try {
+      pins = await prisma.pin.findMany({
+        orderBy: { createdAt: 'asc' },
+      })
+    } catch (pinError) {
+      console.log('Pins not available in backup')
+    }
+
+    // Fetch system settings for backup
+    let systemSettings: Array<{
+      id: string
+      key: string
+      value: string
+      updatedAt: Date
+    }> = []
+    try {
+      systemSettings = await prisma.systemSettings.findMany({
+        orderBy: { key: 'asc' },
+      })
+    } catch (settingsError) {
+      console.log('SystemSettings not available in backup')
+    }
+
     // Create Excel workbook
     const workbook = XLSX.utils.book_new()
 
@@ -155,6 +186,31 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       }))
       const leadsSheet = XLSX.utils.json_to_sheet(leadsData)
       XLSX.utils.book_append_sheet(workbook, leadsSheet, 'Leads')
+    }
+
+    // Create Pins sheet (if pins exist)
+    if (pins.length > 0) {
+      const pinsData = pins.map((pin) => ({
+        ID: pin.id,
+        'PIN Number': pin.pinNumber,
+        Role: pin.role,
+        'Created At': format(new Date(pin.createdAt), 'yyyy-MM-dd HH:mm:ss'),
+        'Updated At': format(new Date(pin.updatedAt), 'yyyy-MM-dd HH:mm:ss'),
+      }))
+      const pinsSheet = XLSX.utils.json_to_sheet(pinsData)
+      XLSX.utils.book_append_sheet(workbook, pinsSheet, 'Pins')
+    }
+
+    // Create SystemSettings sheet (if settings exist)
+    if (systemSettings.length > 0) {
+      const settingsData = systemSettings.map((setting) => ({
+        ID: setting.id,
+        Key: setting.key,
+        Value: setting.value,
+        'Updated At': format(new Date(setting.updatedAt), 'yyyy-MM-dd HH:mm:ss'),
+      }))
+      const settingsSheet = XLSX.utils.json_to_sheet(settingsData)
+      XLSX.utils.book_append_sheet(workbook, settingsSheet, 'SystemSettings')
     }
 
     // Generate Excel buffer
