@@ -41,8 +41,32 @@ export async function POST(request: NextRequest) {
       // Delete Expense Transactions
       const expenseDeleted = await tx.expenseTransaction.deleteMany()
 
-      // Delete Backup Logs
+      // Get the most recent successful backup before deleting
+      const lastBackup = await tx.backupLog.findFirst({
+        where: { status: 'SUCCESS' },
+        orderBy: { backupDate: 'desc' },
+      })
+
+      // Delete all backup logs
       const backupDeleted = await tx.backupLog.deleteMany()
+
+      // Restore the last successful backup log (if exists)
+      // This allows recovery from accidental factory reset
+      if (lastBackup) {
+        await tx.backupLog.create({
+          data: {
+            backupType: lastBackup.backupType,
+            driveFileId: lastBackup.driveFileId,
+            inventoryCount: lastBackup.inventoryCount,
+            expenseCount: lastBackup.expenseCount,
+            stockCount: lastBackup.stockCount,
+            leadsCount: lastBackup.leadsCount,
+            status: lastBackup.status,
+            backupDate: lastBackup.backupDate,
+            errorMessage: lastBackup.errorMessage,
+          },
+        })
+      }
 
       return {
         inventory: inventoryDeleted.count,

@@ -39,7 +39,7 @@ export function RestoreManager() {
   const fetchBackups = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/admin/backup/list?limit=50')
+      const response = await fetch('/api/admin/backup/list?limit=1')
       const data = await response.json()
 
       if (data.success) {
@@ -117,7 +117,7 @@ export function RestoreManager() {
             Restore from Backup
           </CardTitle>
           <CardDescription>
-            Select a backup to restore. Current data will be backed up before restoration.
+            Restore from the last backup. Current data will be backed up before restoration.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
