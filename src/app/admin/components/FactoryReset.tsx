@@ -97,9 +97,12 @@ export function FactoryReset() {
               <li>All Inventory transactions</li>
               <li>All Expense transactions</li>
               <li>All StockBoard transactions</li>
-              <li>All Backup logs</li>
+              <li>All Backup logs (except the last backup)</li>
             </ul>
-            <p className="text-sm text-red-700 mt-3 font-medium">
+            <p className="text-sm text-green-700 mt-3 font-medium">
+              ✓ The last backup will be preserved for recovery
+            </p>
+            <p className="text-sm text-red-700 mt-2 font-medium">
               User PINs and system settings will NOT be affected.
             </p>
           </div>
@@ -166,7 +169,7 @@ export function FactoryReset() {
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                This will permanently delete all inventory, expenses, and stock data. This action CANNOT be undone!
+                This will permanently delete all inventory, expenses, and stock data. The last backup will be preserved for recovery.
               </AlertDescription>
             </Alert>
           </div>
