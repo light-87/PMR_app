@@ -34,6 +34,10 @@ export async function GET(request: NextRequest) {
     const warehouse = searchParams.get('warehouse') as Warehouse | null
     const bucketType = searchParams.get('bucketType') as BucketType | null
 
+    // Pagination parameters
+    const limit = parseInt(searchParams.get('limit') || '200') // Default: 200 transactions
+    const offset = parseInt(searchParams.get('offset') || '0')
+
     // Build filter conditions
     const where: Record<string, unknown> = {}
     if (date) {
@@ -46,11 +50,16 @@ export async function GET(request: NextRequest) {
     if (warehouse) where.warehouse = warehouse
     if (bucketType) where.bucketType = bucketType
 
-    // Fetch transactions
+    // Fetch transactions with pagination
     const transactions = await prisma.inventoryTransaction.findMany({
       where,
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      skip: offset,
     })
+
+    // Get total count for pagination
+    const totalCount = await prisma.inventoryTransaction.count({ where })
 
     // Calculate summary - current stock per bucket per warehouse
     const summary = await calculateStockSummary()
@@ -59,6 +68,12 @@ export async function GET(request: NextRequest) {
       success: true,
       transactions,
       summary,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: offset + transactions.length < totalCount,
+      },
     })
   } catch (error) {
     console.error('Inventory GET error:', error)
@@ -186,13 +201,47 @@ async function getCurrentStock(
   return lastTransaction?.runningTotal || 0
 }
 
-// Helper function to calculate stock summary
+// Helper function to calculate stock summary (optimized with single query)
 async function calculateStockSummary() {
   const bucketTypes = Object.values(BucketType)
-  const warehouses = Object.values(Warehouse)
 
+  // OPTIMIZATION: Fetch all latest running totals in a single query using DISTINCT ON
+  // This replaces 26+ separate queries with just 1 query
+  const latestStocks = await prisma.$queryRaw<
+    Array<{ bucketType: string; warehouse: string; runningTotal: number }>
+  >`
+    SELECT DISTINCT ON ("bucketType", "warehouse")
+      "bucketType",
+      "warehouse",
+      "runningTotal"
+    FROM "InventoryTransaction"
+    WHERE "warehouse" IN ('PALLAVI', 'TULARAM')
+    ORDER BY "bucketType", "warehouse", "date" DESC, "createdAt" DESC
+  `
+
+  // Build a lookup map for O(1) access
+  const stockMap = new Map<string, number>()
+  for (const stock of latestStocks) {
+    const key = `${stock.bucketType}-${stock.warehouse}`
+    stockMap.set(key, stock.runningTotal)
+  }
+
+  // Get FREE_DEF stock (separate table) - single query
+  let freeDEFStock = 0
+  try {
+    const lastStockTransaction = await prisma.stockTransaction.findFirst({
+      where: { category: 'FREE_DEF' },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      select: { runningTotal: true },
+    })
+    freeDEFStock = lastStockTransaction?.runningTotal || 0
+  } catch {
+    // Table doesn't exist yet or error
+    freeDEFStock = 0
+  }
+
+  // Build summary from the fetched data
   const summary = []
-
   for (const bucketType of bucketTypes) {
     const row: { bucketType: BucketType; pallavi: number; tularam: number; total: number } = {
       bucketType,
@@ -201,37 +250,18 @@ async function calculateStockSummary() {
       total: 0,
     }
 
-    // Special handling for FREE_DEF - not stored in warehouses
+    // Special handling for FREE_DEF
     if (bucketType === 'FREE_DEF') {
-      // Get current Free DEF stock from StockBoard (StockTransaction)
-      try {
-        const lastStockTransaction = await prisma.stockTransaction.findFirst({
-          where: { category: 'FREE_DEF' },
-          orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
-          select: { runningTotal: true },
-        })
-        row.total = lastStockTransaction?.runningTotal || 0
-      } catch {
-        row.total = 0
-      }
-      // Pallavi and Tularam remain 0 for FREE_DEF
+      row.total = freeDEFStock
       summary.push(row)
       continue
     }
 
-    for (const warehouse of warehouses) {
-      // Skip FACTORY - it's not shown in the summary (only used for Free DEF tracking)
-      if (warehouse === 'FACTORY') continue
-
-      const stock = await getCurrentStock(bucketType, warehouse)
-      if (warehouse === 'PALLAVI') {
-        row.pallavi = stock
-      } else if (warehouse === 'TULARAM') {
-        row.tularam = stock
-      }
-    }
-
+    // Lookup stocks from our map
+    row.pallavi = stockMap.get(`${bucketType}-PALLAVI`) || 0
+    row.tularam = stockMap.get(`${bucketType}-TULARAM`) || 0
     row.total = row.pallavi + row.tularam
+
     summary.push(row)
   }
 
