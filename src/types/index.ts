@@ -498,3 +498,73 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   CONVERTED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   NOT_INTERESTED: 'bg-red-100 text-red-800 border-red-300',
 }
+
+// Inventory Dashboard Types
+export type TimePeriodView = 'daily' | 'monthly' | 'alltime'
+export type DailyPeriod = '7days' | '30days' | 'custom'
+export type MonthlyPeriod = 'current' | '3months' | '6months' | '12months'
+
+export interface InventoryOverviewMetrics {
+  totalStocked: number
+  totalSold: number
+  stockedChange: number // % change from previous period
+  soldChange: number
+  turnoverRate: number
+  currentStockValue: number // Total buckets in stock
+}
+
+export interface MovementTrendDataPoint {
+  date: string // formatted date
+  stocked: number
+  sold: number
+  net: number // stocked - sold
+}
+
+export interface ForecastDataPoint {
+  date: string
+  actual?: number // if historical
+  projected?: number // if forecast
+}
+
+export interface BucketPerformance {
+  bucketType: BucketType
+  totalStocked: number
+  totalSold: number
+  currentStock: number
+  turnoverRate: number
+  avgDaysToSell: number | null
+  status: 'fast' | 'moderate' | 'slow'
+}
+
+export interface ReorderRecommendation {
+  bucketType: BucketType
+  currentStock: number
+  avgDailyConsumption: number
+  daysUntilStockout: number | null // null if no consumption
+  status: 'urgent' | 'soon' | 'sufficient' | 'nodata'
+  recommendedOrderQty: number
+}
+
+export interface TopEntity {
+  name: string
+  totalQuantity: number
+  transactionCount: number
+  lastTransactionDate: string
+}
+
+export interface InventoryDashboardData {
+  overview: InventoryOverviewMetrics
+  movementTrends: MovementTrendDataPoint[]
+  forecast: ForecastDataPoint[]
+  bucketPerformance: BucketPerformance[]
+  reorderRecommendations: ReorderRecommendation[]
+  topBuyers: TopEntity[]
+  topSuppliers: TopEntity[]
+}
+
+export interface InventoryDashboardResponse {
+  success: boolean
+  data?: InventoryDashboardData
+  message?: string
+  error?: string
+}
