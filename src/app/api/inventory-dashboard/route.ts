@@ -423,6 +423,8 @@ async function calculateBucketPerformance(
 
   const currentStocks: { [key: string]: number } = {}
   for (const stock of latestStocks) {
+    if (!stock._max.date) continue
+
     const latest = await prisma.inventoryTransaction.findFirst({
       where: {
         bucketType: stock.bucketType,
@@ -482,6 +484,8 @@ async function calculateReorderRecommendations(): Promise<ReorderRecommendation[
 
   const currentStocks: { [key: string]: number } = {}
   for (const stock of latestStocks) {
+    if (!stock._max.date) continue
+
     const latest = await prisma.inventoryTransaction.findFirst({
       where: {
         bucketType: stock.bucketType,
