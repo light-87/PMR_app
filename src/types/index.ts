@@ -498,3 +498,120 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   CONVERTED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   NOT_INTERESTED: 'bg-red-100 text-red-800 border-red-300',
 }
+
+// Inventory Dashboard Types
+export type TimePeriodView = 'daily' | 'monthly' | 'alltime'
+export type DailyPeriod = '7days' | '30days' | 'custom'
+export type MonthlyPeriod = 'current' | '3months' | '6months' | '12months'
+
+export interface InventoryOverviewMetrics {
+  totalStocked: number
+  totalSold: number
+  stockedChange: number // % change from previous period
+  soldChange: number
+  turnoverRate: number
+  currentStockValue: number // Total buckets in stock
+}
+
+export interface MovementTrendDataPoint {
+  date: string // formatted date
+  stocked: number
+  sold: number
+  net: number // stocked - sold
+}
+
+export interface ForecastDataPoint {
+  date: string
+  actual?: number // if historical
+  projected?: number // if forecast
+}
+
+export interface BucketPerformance {
+  bucketType: BucketType
+  totalStocked: number
+  totalSold: number
+  currentStock: number
+  turnoverRate: number
+  avgDaysToSell: number | null
+  status: 'fast' | 'moderate' | 'slow'
+}
+
+export interface ReorderRecommendation {
+  bucketType: BucketType
+  currentStock: number
+  avgDailyConsumption: number
+  daysUntilStockout: number | null // null if no consumption
+  status: 'urgent' | 'soon' | 'sufficient' | 'nodata'
+  recommendedOrderQty: number
+}
+
+export interface TopEntity {
+  name: string
+  totalQuantity: number
+  transactionCount: number
+  lastTransactionDate: string
+}
+
+// Free DEF Analytics Types
+export interface FreeDefOverviewMetrics {
+  produced: number // Liters produced
+  consumedByBuckets: number // Liters consumed for bucket sales
+  soldDirect: number // Liters sold directly to customers
+  currentStock: number // Current stock in liters
+  producedChange: number // % change from previous period
+  consumedChange: number // % change
+  soldChange: number // % change
+}
+
+export interface FreeDefFlowDataPoint {
+  date: string
+  produced: number
+  consumed: number
+  soldDirect: number
+  net: number // produced - consumed - soldDirect
+}
+
+export interface ProductionForecastData {
+  currentStock: number // Liters
+  dailyConsumption: number // Liters/day
+  bucketConsumption: number // Liters/day from bucket sales
+  directSales: number // Liters/day from direct sales
+  daysUntilStockout: number | null
+  status: 'urgent' | 'warning' | 'sufficient' | 'nodata'
+  batchesNeeded: number
+  targetStock: number // For 60 days supply
+  nextBatchDate: string | null
+  followingBatchDate: string | null
+}
+
+export interface FreeDefCustomerData {
+  topDirectBuyers: TopEntity[] // Top customers buying loose DEF
+  bucketImpact: {
+    bucketType: BucketType
+    bucketsSold: number
+    litersConsumed: number
+  }[]
+}
+
+export interface InventoryDashboardData {
+  overview: InventoryOverviewMetrics
+  movementTrends: MovementTrendDataPoint[]
+  forecast: ForecastDataPoint[]
+  bucketPerformance: BucketPerformance[]
+  reorderRecommendations: ReorderRecommendation[]
+  topBuyers: TopEntity[]
+  topSuppliers: TopEntity[]
+  freeDef: {
+    overview: FreeDefOverviewMetrics
+    flowData: FreeDefFlowDataPoint[]
+    productionForecast: ProductionForecastData
+    customerData: FreeDefCustomerData
+  }
+}
+
+export interface InventoryDashboardResponse {
+  success: boolean
+  data?: InventoryDashboardData
+  message?: string
+  error?: string
+}

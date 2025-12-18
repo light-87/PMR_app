@@ -32,6 +32,7 @@ export function Header() {
     { href: '/expenses', label: 'Expenses', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
     { href: '/search', label: 'Search', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
     { href: '/dashboard', label: 'Dashboard', roles: ['ADMIN'] },
+    { href: '/inventory-dashboard', label: 'Inventory Dashboard', roles: ['ADMIN'] },
     { href: '/statements', label: 'Statements', roles: ['ADMIN'] },
     { href: '/admin', label: 'Admin', roles: ['ADMIN'] },
   ]
