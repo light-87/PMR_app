@@ -552,6 +552,47 @@ export interface TopEntity {
   lastTransactionDate: string
 }
 
+// Free DEF Analytics Types
+export interface FreeDefOverviewMetrics {
+  produced: number // Liters produced
+  consumedByBuckets: number // Liters consumed for bucket sales
+  soldDirect: number // Liters sold directly to customers
+  currentStock: number // Current stock in liters
+  producedChange: number // % change from previous period
+  consumedChange: number // % change
+  soldChange: number // % change
+}
+
+export interface FreeDefFlowDataPoint {
+  date: string
+  produced: number
+  consumed: number
+  soldDirect: number
+  net: number // produced - consumed - soldDirect
+}
+
+export interface ProductionForecastData {
+  currentStock: number // Liters
+  dailyConsumption: number // Liters/day
+  bucketConsumption: number // Liters/day from bucket sales
+  directSales: number // Liters/day from direct sales
+  daysUntilStockout: number | null
+  status: 'urgent' | 'warning' | 'sufficient' | 'nodata'
+  batchesNeeded: number
+  targetStock: number // For 60 days supply
+  nextBatchDate: string | null
+  followingBatchDate: string | null
+}
+
+export interface FreeDefCustomerData {
+  topDirectBuyers: TopEntity[] // Top customers buying loose DEF
+  bucketImpact: {
+    bucketType: BucketType
+    bucketsSold: number
+    litersConsumed: number
+  }[]
+}
+
 export interface InventoryDashboardData {
   overview: InventoryOverviewMetrics
   movementTrends: MovementTrendDataPoint[]
@@ -560,6 +601,12 @@ export interface InventoryDashboardData {
   reorderRecommendations: ReorderRecommendation[]
   topBuyers: TopEntity[]
   topSuppliers: TopEntity[]
+  freeDef: {
+    overview: FreeDefOverviewMetrics
+    flowData: FreeDefFlowDataPoint[]
+    productionForecast: ProductionForecastData
+    customerData: FreeDefCustomerData
+  }
 }
 
 export interface InventoryDashboardResponse {
