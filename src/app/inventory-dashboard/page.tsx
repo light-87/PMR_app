@@ -27,6 +27,10 @@ import ForecastChart from './components/ForecastChart'
 import BucketPerformanceTable from './components/BucketPerformanceTable'
 import ReorderRecommendationTable from './components/ReorderRecommendationTable'
 import TopCustomersVendors from './components/TopCustomersVendors'
+import FreeDefOverviewCards from './components/FreeDefOverviewCards'
+import FreeDefFlowChart from './components/FreeDefFlowChart'
+import ProductionForecast from './components/ProductionForecast'
+import FreeDefCustomerAnalysis from './components/FreeDefCustomerAnalysis'
 
 export default function InventoryDashboardPage() {
   const { role } = useAuthStore()
@@ -189,6 +193,37 @@ export default function InventoryDashboardPage() {
           topBuyers={data?.data?.topBuyers}
           topSuppliers={data?.data?.topSuppliers}
         />
+
+        {/* ============================================ */}
+        {/* FREE_DEF ANALYTICS SECTION */}
+        {/* ============================================ */}
+
+        <div className="border-t-4 border-primary/20 pt-8 mt-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">FREE_DEF Analytics</h2>
+            <p className="text-muted-foreground mt-1">
+              Loose DEF production, consumption, and forecasting (measured in liters)
+            </p>
+          </div>
+
+          {/* FREE_DEF Overview Cards */}
+          <FreeDefOverviewCards data={data?.data?.freeDef?.overview} />
+
+          {/* Production Forecast (CRITICAL) */}
+          <div className="mt-6">
+            <ProductionForecast data={data?.data?.freeDef?.productionForecast} />
+          </div>
+
+          {/* FREE_DEF Flow Chart */}
+          <div className="mt-6">
+            <FreeDefFlowChart data={data?.data?.freeDef?.flowData} />
+          </div>
+
+          {/* Customer Analysis */}
+          <div className="mt-6">
+            <FreeDefCustomerAnalysis data={data?.data?.freeDef?.customerData} />
+          </div>
+        </div>
       </div>
     </ProtectedLayout>
   )
