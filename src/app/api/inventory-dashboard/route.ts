@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate FREE_DEF analytics
     const freeDefOverview = await calculateFreeDefOverview(transactions, previousTransactions, startDate, endDate)
-    const freeDefFlowData = calculateFreeDefFlow(transactions, startDate, endDate, view)
+    const freeDefFlowData = await calculateFreeDefFlow(transactions, startDate, endDate, view)
     const productionForecast = await calculateProductionForecast(transactions, startDate, endDate)
     const freeDefCustomerData = calculateFreeDefCustomers(transactions, startDate, endDate)
 
@@ -759,23 +759,40 @@ async function calculateFreeDefOverview(
 }
 
 // Helper function: Calculate FREE_DEF flow data
-function calculateFreeDefFlow(
+async function calculateFreeDefFlow(
   transactions: any[],
   startDate: Date,
   endDate: Date,
   view: string
-): FreeDefFlowDataPoint[] {
+): Promise<FreeDefFlowDataPoint[]> {
   const flowData: FreeDefFlowDataPoint[] = []
 
-  // This would need StockTransaction data for production
-  // For now, we'll calculate consumption from bucket sales
   if (view === 'monthly' || view === 'alltime') {
+    // Group by month
     const months = eachMonthOfInterval({ start: startDate, end: endDate })
 
-    months.forEach((month) => {
+    for (const month of months) {
       const monthStart = startOfMonth(month)
       const monthEnd = endOfMonth(month)
 
+      // Get production data from StockTransaction
+      const productionData = await prisma.stockTransaction.aggregate({
+        where: {
+          type: 'PRODUCE_BATCH',
+          category: 'FREE_DEF',
+          date: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+        },
+        _sum: {
+          quantity: true,
+        },
+      })
+
+      const produced = Math.abs(Number(productionData._sum.quantity) || 0)
+
+      // Calculate consumption from bucket sales
       let consumed = 0
       let soldDirect = 0
 
@@ -795,19 +812,38 @@ function calculateFreeDefFlow(
 
       flowData.push({
         date: format(month, 'MMM yyyy'),
-        produced: 0, // Would need StockTransaction data
+        produced,
         consumed,
         soldDirect,
-        net: -consumed - soldDirect,
+        net: produced - consumed - soldDirect,
       })
-    })
+    }
   } else {
+    // Group by day
     const days = eachDayOfInterval({ start: startDate, end: endDate })
 
-    days.forEach((day) => {
+    for (const day of days) {
       const dayStart = startOfDay(day)
       const dayEnd = endOfDay(day)
 
+      // Get production data from StockTransaction
+      const productionData = await prisma.stockTransaction.aggregate({
+        where: {
+          type: 'PRODUCE_BATCH',
+          category: 'FREE_DEF',
+          date: {
+            gte: dayStart,
+            lte: dayEnd,
+          },
+        },
+        _sum: {
+          quantity: true,
+        },
+      })
+
+      const produced = Math.abs(Number(productionData._sum.quantity) || 0)
+
+      // Calculate consumption from bucket sales
       let consumed = 0
       let soldDirect = 0
 
@@ -827,12 +863,12 @@ function calculateFreeDefFlow(
 
       flowData.push({
         date: format(day, 'MMM dd'),
-        produced: 0, // Would need StockTransaction data
+        produced,
         consumed,
         soldDirect,
-        net: -consumed - soldDirect,
+        net: produced - consumed - soldDirect,
       })
-    })
+    }
   }
 
   return flowData
