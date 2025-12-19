@@ -39,7 +39,7 @@ export default function FixStockPage() {
   }
 
   return (
-    <ProtectedLayout requiredRole="ADMIN">
+    <ProtectedLayout>
       <div className="container mx-auto p-6 max-w-4xl">
         <Card>
           <CardHeader>
