@@ -158,8 +158,28 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
   const totalUreaNeeded = UREA_PER_BATCH_KG * batchCount
   const totalLitersProduced = LITERS_PER_BATCH * batchCount
 
+  // Check if this is backdated for UREA
+  const latestUreaTransaction = await prisma.stockTransaction.findFirst({
+    where: { category: StockCategory.UREA },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { date: true },
+  })
+  const isUreaBackdated = latestUreaTransaction && data.date < latestUreaTransaction.date
+
+  // Check if this is backdated for FREE_DEF
+  const latestFreeDEFTransaction = await prisma.stockTransaction.findFirst({
+    where: { category: StockCategory.FREE_DEF },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { date: true },
+  })
+  const isFreeDEFBackdated = latestFreeDEFTransaction && data.date < latestFreeDEFTransaction.date
+
+  // Use correct baseline stock for UREA
+  const ureaStock = isUreaBackdated
+    ? await getStockAtDate(StockCategory.UREA, data.date)
+    : await getCurrentStock(StockCategory.UREA)
+
   // Check if enough Urea is available
-  const ureaStock = await getCurrentStock(StockCategory.UREA)
   if (ureaStock < totalUreaNeeded) {
     return NextResponse.json(
       {
@@ -173,7 +193,11 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
 
   // Calculate new running totals
   const ureaRunningTotal = ureaStock - totalUreaNeeded
-  const freeDEFStock = await getCurrentStock(StockCategory.FREE_DEF)
+
+  // Use correct baseline stock for FREE_DEF
+  const freeDEFStock = isFreeDEFBackdated
+    ? await getStockAtDate(StockCategory.FREE_DEF, data.date)
+    : await getCurrentStock(StockCategory.FREE_DEF)
   const freeDEFRunningTotal = freeDEFStock + totalLitersProduced
 
   // Create transactions in a transaction block
@@ -203,6 +227,14 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
     }),
   ])
 
+  // If backdated, recalculate all subsequent running totals for affected categories
+  if (isUreaBackdated) {
+    await recalculateRunningTotalsAfter(StockCategory.UREA, data.date, ureaStock)
+  }
+  if (isFreeDEFBackdated) {
+    await recalculateRunningTotalsAfter(StockCategory.FREE_DEF, data.date, freeDEFStock)
+  }
+
   return NextResponse.json({
     success: true,
     message: `Produced ${totalLitersProduced}L Free DEF (${batchCount} batch${batchCount !== 1 ? 'es' : ''}) using ${totalUreaNeeded}kg Urea`,
@@ -212,7 +244,19 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
 
 // Handle filling buckets (auto-called from inventory)
 async function handleFillBuckets(data: z.infer<typeof createStockSchema>) {
-  const freeDEFStock = await getCurrentStock(StockCategory.FREE_DEF)
+  // Check if this is backdated
+  const latestTransaction = await prisma.stockTransaction.findFirst({
+    where: { category: StockCategory.FREE_DEF },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { date: true },
+  })
+  const isBackdated = latestTransaction && data.date < latestTransaction.date
+
+  // Use correct baseline stock
+  const freeDEFStock = isBackdated
+    ? await getStockAtDate(StockCategory.FREE_DEF, data.date)
+    : await getCurrentStock(StockCategory.FREE_DEF)
+
   const litersNeeded = Math.abs(data.quantity)
 
   // Check if enough Free DEF is available
@@ -242,6 +286,11 @@ async function handleFillBuckets(data: z.infer<typeof createStockSchema>) {
     },
   })
 
+  // If backdated, recalculate all subsequent running totals
+  if (isBackdated) {
+    await recalculateRunningTotalsAfter(StockCategory.FREE_DEF, data.date, freeDEFStock)
+  }
+
   return NextResponse.json({
     success: true,
     transaction,
@@ -250,7 +299,19 @@ async function handleFillBuckets(data: z.infer<typeof createStockSchema>) {
 
 // Handle selling buckets (auto-called from inventory)
 async function handleSellBuckets(data: z.infer<typeof createStockSchema>) {
-  const freeDEFStock = await getCurrentStock(StockCategory.FREE_DEF)
+  // Check if this is backdated
+  const latestTransaction = await prisma.stockTransaction.findFirst({
+    where: { category: StockCategory.FREE_DEF },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { date: true },
+  })
+  const isBackdated = latestTransaction && data.date < latestTransaction.date
+
+  // Use correct baseline stock
+  const freeDEFStock = isBackdated
+    ? await getStockAtDate(StockCategory.FREE_DEF, data.date)
+    : await getCurrentStock(StockCategory.FREE_DEF)
+
   const litersToSubtract = Math.abs(data.quantity)
 
   // Check if enough Free DEF is available
@@ -279,6 +340,11 @@ async function handleSellBuckets(data: z.infer<typeof createStockSchema>) {
     },
   })
 
+  // If backdated, recalculate all subsequent running totals
+  if (isBackdated) {
+    await recalculateRunningTotalsAfter(StockCategory.FREE_DEF, data.date, freeDEFStock)
+  }
+
   return NextResponse.json({
     success: true,
     transaction,
@@ -287,7 +353,19 @@ async function handleSellBuckets(data: z.infer<typeof createStockSchema>) {
 
 // Handle regular transactions (ADD_UREA, SELL_FREE_DEF)
 async function handleRegularTransaction(data: z.infer<typeof createStockSchema>) {
-  const currentStock = await getCurrentStock(data.category)
+  // Check if this is a backdated transaction
+  const latestTransaction = await prisma.stockTransaction.findFirst({
+    where: { category: data.category },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { date: true },
+  })
+
+  const isBackdated = latestTransaction && data.date < latestTransaction.date
+
+  // Use correct baseline stock
+  const currentStock = isBackdated
+    ? await getStockAtDate(data.category, data.date)
+    : await getCurrentStock(data.category)
 
   // For selling Free DEF, check if enough stock is available
   if (data.type === 'SELL_FREE_DEF' && data.quantity < 0) {
@@ -337,6 +415,11 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
       }),
     ])
 
+    // If backdated, recalculate all subsequent running totals
+    if (isBackdated) {
+      await recalculateRunningTotalsAfter(data.category, data.date, currentStock)
+    }
+
     return NextResponse.json({
       success: true,
       transactions,
@@ -356,6 +439,11 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
     },
   })
 
+  // If backdated, recalculate all subsequent running totals
+  if (isBackdated) {
+    await recalculateRunningTotalsAfter(data.category, data.date, currentStock)
+  }
+
   return NextResponse.json({
     success: true,
     transaction,
@@ -371,6 +459,48 @@ async function getCurrentStock(category: StockCategory): Promise<number> {
   })
 
   return lastTransaction?.runningTotal || 0
+}
+
+// Helper function to get stock balance at a specific date (for backdated transactions)
+async function getStockAtDate(category: StockCategory, beforeDate: Date): Promise<number> {
+  const lastTransaction = await prisma.stockTransaction.findFirst({
+    where: {
+      category,
+      date: { lt: beforeDate }
+    },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { runningTotal: true },
+  })
+
+  return lastTransaction?.runningTotal || 0
+}
+
+// Helper function to recalculate running totals from a given date onwards
+async function recalculateRunningTotalsAfter(
+  category: StockCategory,
+  fromDate: Date,
+  balanceBeforeDate: number
+) {
+  const transactions = await prisma.stockTransaction.findMany({
+    where: {
+      category,
+      date: { gte: fromDate }
+    },
+    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+  })
+
+  if (!transactions || transactions.length === 0) return
+
+  let runningTotal = balanceBeforeDate
+
+  for (const transaction of transactions) {
+    runningTotal += transaction.quantity
+
+    await prisma.stockTransaction.update({
+      where: { id: transaction.id },
+      data: { runningTotal }
+    })
+  }
 }
 
 // Helper function to calculate stock summary

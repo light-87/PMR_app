@@ -98,11 +98,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createInventorySchema.parse(body)
 
+    // Check if this is a backdated transaction
+    const latestTransaction = await prisma.inventoryTransaction.findFirst({
+      where: {
+        bucketType: validatedData.bucketType,
+        warehouse: validatedData.warehouse
+      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      select: { date: true },
+    })
+
+    const isBackdated = latestTransaction && validatedData.date < latestTransaction.date
+
     // Get current stock for this bucket+warehouse combination
-    const currentStock = await getCurrentStock(
-      validatedData.bucketType,
-      validatedData.warehouse
-    )
+    const currentStock = isBackdated
+      ? await getInventoryStockAtDate(validatedData.bucketType, validatedData.warehouse, validatedData.date)
+      : await getCurrentStock(validatedData.bucketType, validatedData.warehouse)
 
     // Calculate signed quantity and running total
     const signedQuantity = validatedData.action === 'SELL'
@@ -142,6 +153,16 @@ export async function POST(request: NextRequest) {
         runningTotal: newRunningTotal,
       },
     })
+
+    // If backdated, recalculate all subsequent running totals
+    if (isBackdated) {
+      await recalculateInventoryRunningTotalsAfter(
+        validatedData.bucketType,
+        validatedData.warehouse,
+        validatedData.date,
+        currentStock
+      )
+    }
 
     // Auto-update stock tracking (only if StockTransaction table exists)
     const bucketSize = BUCKET_SIZES[validatedData.bucketType]
@@ -199,6 +220,55 @@ async function getCurrentStock(
   })
 
   return lastTransaction?.runningTotal || 0
+}
+
+// Helper function to get stock balance at a specific date (for backdated transactions)
+async function getInventoryStockAtDate(
+  bucketType: BucketType,
+  warehouse: Warehouse,
+  beforeDate: Date
+): Promise<number> {
+  const lastTransaction = await prisma.inventoryTransaction.findFirst({
+    where: {
+      bucketType,
+      warehouse,
+      date: { lt: beforeDate }
+    },
+    orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    select: { runningTotal: true },
+  })
+
+  return lastTransaction?.runningTotal || 0
+}
+
+// Helper function to recalculate running totals from a given date onwards
+async function recalculateInventoryRunningTotalsAfter(
+  bucketType: BucketType,
+  warehouse: Warehouse,
+  fromDate: Date,
+  balanceBeforeDate: number
+) {
+  const transactions = await prisma.inventoryTransaction.findMany({
+    where: {
+      bucketType,
+      warehouse,
+      date: { gte: fromDate }
+    },
+    orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
+  })
+
+  if (!transactions || transactions.length === 0) return
+
+  let runningTotal = balanceBeforeDate
+
+  for (const transaction of transactions) {
+    runningTotal += transaction.quantity
+
+    await prisma.inventoryTransaction.update({
+      where: { id: transaction.id },
+      data: { runningTotal }
+    })
+  }
 }
 
 // Helper function to calculate stock summary (optimized with single query)
