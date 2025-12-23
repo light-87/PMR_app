@@ -1,0 +1,313 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+// ============================================
+// AUTHENTICATION & MULTI-TENANCY
+// ============================================
+
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pins                  Pin[]
+  warehouses            Warehouse[]
+  accounts              Account[]
+  products              Product[]
+  inventoryTransactions InventoryTransaction[]
+  stockTransactions     StockTransaction[]
+  expenseTransactions   ExpenseTransaction[]
+  backupLogs            BackupLog[]
+  systemSettings        SystemSettings[]
+  leads                 Lead[]
+}
+
+model Pin {
+  id        String   @id @default(cuid())
+  pinNumber String
+  role      PinRole
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, pinNumber]) // Composite unique constraint
+  @@index([pinNumber])
+}
+
+enum PinRole {
+  ADMIN             // PIN 1: Full access
+  EXPENSE_INVENTORY // PIN 2: Expenses + Inventory
+  INVENTORY_ONLY    // PIN 3: Inventory only
+}
+
+// ============================================
+// DYNAMIC CONFIGURATION TABLES (Replacing Enums)
+// ============================================
+
+model Warehouse {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  transactions InventoryTransaction[]
+
+  @@unique([tenantId, name])
+}
+
+model Account {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  transactions ExpenseTransaction[]
+
+  @@unique([tenantId, name])
+}
+
+model Product {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  size      Int      // in liters
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  transactions InventoryTransaction[]
+
+  @@unique([tenantId, name])
+}
+
+// ============================================
+// INVENTORY MODULE
+// ============================================
+
+model InventoryTransaction {
+  id           String     @id @default(cuid())
+  date         DateTime
+
+  // Legacy Enum Fields (Kept for reference during migration, but deprecated)
+  // warehouse    Warehouse // Removed in favor of relation
+  // bucketType   BucketType // Removed in favor of relation
+
+  warehouseId  String     @db.Uuid
+  warehouse    Warehouse  @relation(fields: [warehouseId], references: [id])
+
+  productId    String     @db.Uuid
+  product      Product    @relation(fields: [productId], references: [id])
+
+  action       ActionType
+  quantity     Int        // Signed: negative for Sell, positive for Stock
+  buyerSeller  String
+  runningTotal Int
+
+  tenantId     String     @db.Uuid
+  tenant       Tenant     @relation(fields: [tenantId], references: [id])
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([date])
+  @@index([warehouseId])
+  @@index([productId])
+  @@index([buyerSeller])
+  @@index([tenantId])
+}
+
+enum ActionType {
+  STOCK
+  SELL
+}
+
+// ============================================
+// STOCK TRACKING MODULE
+// ============================================
+
+model StockTransaction {
+  id              String               @id @default(cuid())
+  date            DateTime
+  type            StockTransactionType
+  category        StockCategory
+  quantity        Float                // Can be negative for consumption
+  unit            StockUnit
+  description     String?
+  runningTotal    Float
+
+  tenantId        String               @db.Uuid
+  tenant          Tenant               @relation(fields: [tenantId], references: [id])
+
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([date])
+  @@index([type])
+  @@index([category])
+  @@index([tenantId])
+}
+
+enum StockTransactionType {
+  ADD_UREA
+  PRODUCE_BATCH
+  SELL_FREE_DEF
+  FILL_BUCKETS
+  SELL_BUCKETS
+}
+
+enum StockCategory {
+  UREA
+  FREE_DEF
+  FINISHED_GOODS
+}
+
+enum StockUnit {
+  KG
+  LITERS
+  BAGS
+}
+
+// ============================================
+// EXPENSE MODULE
+// ============================================
+
+model ExpenseTransaction {
+  id        String          @id @default(cuid())
+  date      DateTime
+  amount    Decimal         @db.Decimal(12, 2)
+
+  // Legacy Enum Field
+  // account   ExpenseAccount // Removed in favor of relation
+
+  accountId String          @db.Uuid
+  account   Account         @relation(fields: [accountId], references: [id])
+
+  type      TransactionType
+  name      String          // Vendor/Customer name
+
+  tenantId  String          @db.Uuid
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([date])
+  @@index([accountId])
+  @@index([type])
+  @@index([name])
+  @@index([tenantId])
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+// ============================================
+// BACKUP LOGS
+// ============================================
+
+model BackupLog {
+  id             String   @id @default(cuid())
+  backupDate     DateTime @default(now())
+  backupType     String   // "MANUAL" or "AUTOMATIC"
+  driveFileId    String?
+  inventoryCount Int
+  expenseCount   Int
+  stockCount     Int      @default(0)
+  leadsCount     Int      @default(0)
+  status         String
+  errorMessage   String?
+
+  tenantId       String   @db.Uuid
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([backupDate])
+  @@index([tenantId])
+}
+
+// ============================================
+// SYSTEM SETTINGS
+// ============================================
+
+model SystemSettings {
+  id        String   @id @default(cuid())
+  key       String
+  value     String
+
+  tenantId  String   @db.Uuid
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, key]) // Settings are now scoped to tenant
+}
+
+// ============================================
+// LEADS MODULE
+// ============================================
+
+model Lead {
+  id               String       @id @default(cuid())
+  name             String
+  phone            String
+  company          String?
+  status           LeadStatus   @default(NEW)
+  priority         Priority     @default(MEDIUM)
+  lastCallDate     DateTime?
+  nextFollowUpDate DateTime?
+  callOutcome      CallOutcome?
+  quickNote        String?
+  additionalNotes  String?
+
+  tenantId         String       @db.Uuid
+  tenant           Tenant       @relation(fields: [tenantId], references: [id])
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([nextFollowUpDate])
+  @@index([lastCallDate])
+  @@index([tenantId])
+}
+
+enum LeadStatus {
+  NEW
+  NEED_TO_CALL
+  CALLED
+  GOT_RESPONSE
+  ON_HOLD
+  CALL_IN_7_DAYS
+  CONVERTED
+  NOT_INTERESTED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CallOutcome {
+  NO_ANSWER
+  BUSY
+  INTERESTED
+  NEED_INFO
+  CALL_BACK_LATER
+  WRONG_NUMBER
+  NOT_INTERESTED_NOW
+}
