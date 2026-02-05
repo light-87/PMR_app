@@ -64,14 +64,21 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
       id: string
       name: string
       phone: string
+      whatsappNumber: string | null
+      countryCode: string
       company: string | null
+      inquiryType: string
       status: string
-      priority: string
       lastCallDate: Date | null
-      nextFollowUpDate: Date | null
       callOutcome: string | null
-      quickNote: string | null
-      additionalNotes: string | null
+      nextActionType: string | null
+      nextActionDate: Date | null
+      visitDate: Date | null
+      visitStatus: string | null
+      visitOutcome: string | null
+      visitNotes: string | null
+      deadReason: string | null
+      notes: string | null
       createdAt: Date
       updatedAt: Date
     }> = []
@@ -169,18 +176,27 @@ export async function createBackup(type: BackupType): Promise<BackupResult> {
         ID: lead.id,
         Name: lead.name,
         Phone: lead.phone,
+        'WhatsApp Number': lead.whatsappNumber || '',
+        'Country Code': lead.countryCode,
         Company: lead.company || '',
+        'Inquiry Type': lead.inquiryType,
         Status: lead.status,
-        Priority: lead.priority,
         'Last Call Date': lead.lastCallDate
           ? format(new Date(lead.lastCallDate), 'yyyy-MM-dd')
           : '',
-        'Next Follow-Up': lead.nextFollowUpDate
-          ? format(new Date(lead.nextFollowUpDate), 'yyyy-MM-dd')
-          : '',
         'Call Outcome': lead.callOutcome || '',
-        'Quick Note': lead.quickNote || '',
-        'Additional Notes': lead.additionalNotes || '',
+        'Next Action Type': lead.nextActionType || '',
+        'Next Action Date': lead.nextActionDate
+          ? format(new Date(lead.nextActionDate), 'yyyy-MM-dd')
+          : '',
+        'Visit Date': lead.visitDate
+          ? format(new Date(lead.visitDate), 'yyyy-MM-dd')
+          : '',
+        'Visit Status': lead.visitStatus || '',
+        'Visit Outcome': lead.visitOutcome || '',
+        'Visit Notes': lead.visitNotes || '',
+        'Dead Reason': lead.deadReason || '',
+        Notes: lead.notes || '',
         'Created At': format(new Date(lead.createdAt), 'yyyy-MM-dd HH:mm:ss'),
         'Updated At': format(new Date(lead.updatedAt), 'yyyy-MM-dd HH:mm:ss'),
       }))

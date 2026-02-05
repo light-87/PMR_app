@@ -14,8 +14,12 @@ import {
   StockCategory,
   StockUnit,
   LeadStatus,
-  Priority,
+  InquiryType,
   CallOutcome,
+  NextActionType,
+  VisitStatus,
+  VisitOutcome,
+  DeadLeadReason,
   PinRole,
 } from '@prisma/client'
 
@@ -273,21 +277,46 @@ export async function POST(request: NextRequest) {
       }
 
       // Restore leads (if present in backup)
+      // Handle both old and new backup formats
       if (leadsData.length > 0) {
         for (const row of leadsData) {
           try {
+            // Map old status values to new ones
+            let status = (row.Status as LeadStatus) || 'NEW'
+            if (status === 'GOT_RESPONSE' || status === 'ON_HOLD' || status === 'CALL_IN_7_DAYS') {
+              status = 'FOLLOW_UP'
+            } else if (status === 'NOT_INTERESTED') {
+              status = 'DEAD'
+            }
+
+            // Map old call outcome values to new ones
+            let callOutcome = row['Call Outcome'] as CallOutcome | null
+            if (callOutcome === 'NEED_INFO') {
+              callOutcome = 'NEEDS_MORE_INFO'
+            } else if (callOutcome === 'NOT_INTERESTED_NOW') {
+              callOutcome = 'NOT_GENUINE'
+            }
+
             await prisma.lead.create({
               data: {
                 name: row.Name || 'Unknown',
                 phone: row.Phone || '',
+                whatsappNumber: row['WhatsApp Number'] || null,
+                countryCode: row['Country Code'] || '91',
                 company: row.Company || null,
-                status: (row.Status as LeadStatus) || 'NEW',
-                priority: (row.Priority as Priority) || 'MEDIUM',
+                inquiryType: (row['Inquiry Type'] as InquiryType) || 'PRODUCT_DETAILS',
+                status: status,
                 lastCallDate: row['Last Call Date'] ? parseBackupDate(row['Last Call Date']) : null,
-                nextFollowUpDate: row['Next Follow-Up'] ? parseBackupDate(row['Next Follow-Up']) : null,
-                callOutcome: row['Call Outcome'] ? (row['Call Outcome'] as CallOutcome) : null,
-                quickNote: row['Quick Note'] || null,
-                additionalNotes: row['Additional Notes'] || null,
+                callOutcome: callOutcome || null,
+                nextActionType: row['Next Action Type'] ? (row['Next Action Type'] as NextActionType) : null,
+                nextActionDate: row['Next Action Date'] ? parseBackupDate(row['Next Action Date']) :
+                               row['Next Follow-Up'] ? parseBackupDate(row['Next Follow-Up']) : null,
+                visitDate: row['Visit Date'] ? parseBackupDate(row['Visit Date']) : null,
+                visitStatus: row['Visit Status'] ? (row['Visit Status'] as VisitStatus) : null,
+                visitOutcome: row['Visit Outcome'] ? (row['Visit Outcome'] as VisitOutcome) : null,
+                visitNotes: row['Visit Notes'] || null,
+                deadReason: row['Dead Reason'] ? (row['Dead Reason'] as DeadLeadReason) : null,
+                notes: row.Notes || row['Quick Note'] || row['Additional Notes'] || null,
               },
             })
             leadsRestored++
