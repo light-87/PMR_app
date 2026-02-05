@@ -281,20 +281,26 @@ export async function POST(request: NextRequest) {
       if (leadsData.length > 0) {
         for (const row of leadsData) {
           try {
-            // Map old status values to new ones
-            let status = (row.Status as LeadStatus) || 'NEW'
-            if (status === 'GOT_RESPONSE' || status === 'ON_HOLD' || status === 'CALL_IN_7_DAYS') {
+            // Map old status values to new ones (check raw string before casting)
+            const rawStatus = row.Status as string || 'NEW'
+            let status: LeadStatus = 'NEW'
+            if (rawStatus === 'GOT_RESPONSE' || rawStatus === 'ON_HOLD' || rawStatus === 'CALL_IN_7_DAYS') {
               status = 'FOLLOW_UP'
-            } else if (status === 'NOT_INTERESTED') {
+            } else if (rawStatus === 'NOT_INTERESTED') {
               status = 'DEAD'
+            } else if (['NEW', 'NEED_TO_CALL', 'CALLED', 'DETAILS_SENT', 'OWNER_CALL_SCHEDULED', 'VISIT_SCHEDULED', 'FOLLOW_UP', 'NEGOTIATING', 'CONVERTED', 'DEAD'].includes(rawStatus)) {
+              status = rawStatus as LeadStatus
             }
 
-            // Map old call outcome values to new ones
-            let callOutcome = row['Call Outcome'] as CallOutcome | null
-            if (callOutcome === 'NEED_INFO') {
+            // Map old call outcome values to new ones (check raw string before casting)
+            const rawCallOutcome = row['Call Outcome'] as string | null
+            let callOutcome: CallOutcome | null = null
+            if (rawCallOutcome === 'NEED_INFO') {
               callOutcome = 'NEEDS_MORE_INFO'
-            } else if (callOutcome === 'NOT_INTERESTED_NOW') {
+            } else if (rawCallOutcome === 'NOT_INTERESTED_NOW') {
               callOutcome = 'NOT_GENUINE'
+            } else if (rawCallOutcome && ['INTERESTED', 'NEEDS_MORE_INFO', 'CALL_BACK_LATER', 'TALK_TO_BOSS', 'NOT_GENUINE', 'WRONG_NUMBER', 'NO_ANSWER', 'BUSY'].includes(rawCallOutcome)) {
+              callOutcome = rawCallOutcome as CallOutcome
             }
 
             await prisma.lead.create({
