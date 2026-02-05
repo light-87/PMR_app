@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
-import { LeadStatus, Priority, CallOutcome } from '@prisma/client'
+import {
+  LeadStatus,
+  InquiryType,
+  CallOutcome,
+  NextActionType,
+  VisitStatus,
+  VisitOutcome,
+  DeadLeadReason,
+} from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,13 +18,20 @@ export const dynamic = 'force-dynamic'
 const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
   phone: z.string().min(1).optional(),
+  whatsappNumber: z.string().optional().nullable(),
+  countryCode: z.string().optional(),
   company: z.string().optional().nullable(),
+  inquiryType: z.nativeEnum(InquiryType).optional(),
   status: z.nativeEnum(LeadStatus).optional(),
-  priority: z.nativeEnum(Priority).optional(),
-  nextFollowUpDate: z.string().transform(str => str ? new Date(str) : null).optional().nullable(),
   callOutcome: z.nativeEnum(CallOutcome).optional().nullable(),
-  quickNote: z.string().optional().nullable(),
-  additionalNotes: z.string().optional().nullable(),
+  nextActionType: z.nativeEnum(NextActionType).optional().nullable(),
+  nextActionDate: z.string().transform(str => str ? new Date(str) : null).optional().nullable(),
+  visitDate: z.string().transform(str => str ? new Date(str) : null).optional().nullable(),
+  visitStatus: z.nativeEnum(VisitStatus).optional().nullable(),
+  visitOutcome: z.nativeEnum(VisitOutcome).optional().nullable(),
+  visitNotes: z.string().optional().nullable(),
+  deadReason: z.nativeEnum(DeadLeadReason).optional().nullable(),
+  notes: z.string().optional().nullable(),
 })
 
 // PUT - Update lead
@@ -58,18 +73,17 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: Record<string, unknown> = { ...validatedData }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: Record<string, any> = { ...validatedData }
 
     // Auto-set lastCallDate if status changed to CALLED
     if (validatedData.status === 'CALLED' && existing.status !== 'CALLED') {
       updateData.lastCallDate = new Date()
     }
 
-    // Auto-set nextFollowUpDate if status changed to CALL_IN_7_DAYS and not manually set
-    if (validatedData.status === 'CALL_IN_7_DAYS' && !validatedData.nextFollowUpDate) {
-      const followUpDate = new Date()
-      followUpDate.setDate(followUpDate.getDate() + 7)
-      updateData.nextFollowUpDate = followUpDate
+    // If marking as DEAD and no deadReason provided, set a default
+    if (validatedData.status === 'DEAD' && !validatedData.deadReason && !existing.deadReason) {
+      updateData.deadReason = 'NOT_INTERESTED'
     }
 
     // Update the lead

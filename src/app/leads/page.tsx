@@ -7,21 +7,29 @@ import { AddLeadForm } from './components/AddLeadForm'
 import { LeadsTable } from './components/LeadsTable'
 import { useAuthStore } from '@/store/authStore'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
-import { Plus, Phone } from 'lucide-react'
-import type { Lead, LeadStatus, Priority, CallOutcome } from '@/types'
+import { Plus, Calendar } from 'lucide-react'
+import type { Lead, LeadStatus, InquiryType, CallOutcome } from '@/types'
+
+type TabType = 'active' | 'dead' | 'visits' | 'all'
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
-  const [priorityLeads, setPriorityLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>('active')
+
+  // Counts for tabs
+  const [counts, setCounts] = useState({ active: 0, dead: 0, visits: 0 })
+
+  // Filters
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'ALL'>('ALL')
-  const [priorityFilter, setPriorityFilter] = useState<Priority | 'ALL'>('ALL')
+  const [inquiryTypeFilter, setInquiryTypeFilter] = useState<InquiryType | 'ALL'>('ALL')
   const [callOutcomeFilter, setCallOutcomeFilter] = useState<CallOutcome | 'ALL'>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
-  const [followUpFrom, setFollowUpFrom] = useState('')
-  const [followUpTo, setFollowUpTo] = useState('')
+
   const { role } = useAuthStore()
 
   const isAdmin = role === 'ADMIN'
@@ -30,55 +38,25 @@ export default function LeadsPage() {
   const fetchLeads = useCallback(async () => {
     try {
       const params = new URLSearchParams()
+      params.append('tab', activeTab)
       if (statusFilter !== 'ALL') params.append('status', statusFilter)
-      if (priorityFilter !== 'ALL') params.append('priority', priorityFilter)
+      if (inquiryTypeFilter !== 'ALL') params.append('inquiryType', inquiryTypeFilter)
       if (callOutcomeFilter !== 'ALL') params.append('callOutcome', callOutcomeFilter)
       if (searchQuery.trim()) params.append('search', searchQuery.trim())
-      if (followUpFrom) params.append('followUpFrom', followUpFrom)
-      if (followUpTo) params.append('followUpTo', followUpTo)
 
       const response = await fetch(`/api/leads?${params}`)
       const data = await response.json()
 
       if (data.success) {
         setLeads(data.leads)
-
-        // Filter priority leads (what to do next)
-        const priority = data.leads.filter((lead: Lead) => {
-          // Show leads that need action
-          if (lead.status === 'CONVERTED' || lead.status === 'NOT_INTERESTED') {
-            return false
-          }
-
-          // High priority or urgent
-          if (lead.priority === 'URGENT' || lead.priority === 'HIGH') {
-            return true
-          }
-
-          // Need to call today
-          if (lead.status === 'NEED_TO_CALL') {
-            return true
-          }
-
-          // Overdue or due today
-          if (lead.nextFollowUpDate) {
-            const followUp = new Date(lead.nextFollowUpDate)
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            return followUp <= today
-          }
-
-          return false
-        })
-
-        setPriorityLeads(priority)
+        setCounts(data.counts)
       }
     } catch (error) {
       console.error('Failed to fetch leads:', error)
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, priorityFilter, callOutcomeFilter, searchQuery, followUpFrom, followUpTo])
+  }, [activeTab, statusFilter, inquiryTypeFilter, callOutcomeFilter, searchQuery])
 
   useEffect(() => {
     fetchLeads()
@@ -127,12 +105,40 @@ export default function LeadsPage() {
 
   const handleResetFilters = () => {
     setStatusFilter('ALL')
-    setPriorityFilter('ALL')
+    setInquiryTypeFilter('ALL')
     setCallOutcomeFilter('ALL')
     setSearchQuery('')
-    setFollowUpFrom('')
-    setFollowUpTo('')
   }
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    // Reset filters when changing tabs
+    handleResetFilters()
+  }
+
+  // Get today's scheduled visits for the priority section
+  const todayVisits = leads.filter((lead) => {
+    if (!lead.visitDate) return false
+    const visitDate = new Date(lead.visitDate)
+    const today = new Date()
+    return (
+      visitDate.getFullYear() === today.getFullYear() &&
+      visitDate.getMonth() === today.getMonth() &&
+      visitDate.getDate() === today.getDate() &&
+      (lead.visitStatus === 'SCHEDULED' || lead.visitStatus === 'RESCHEDULED')
+    )
+  })
+
+  // Get leads that need action today
+  const needsActionToday = leads.filter((lead) => {
+    if (lead.status === 'DEAD' || lead.status === 'CONVERTED') return false
+    if (!lead.nextActionDate) return false
+    const actionDate = new Date(lead.nextActionDate)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    actionDate.setHours(0, 0, 0, 0)
+    return actionDate <= today
+  })
 
   if (loading) {
     return (
@@ -157,47 +163,77 @@ export default function LeadsPage() {
           </Button>
         </div>
 
-        {/* Priority Section - What to do next */}
-        {priorityLeads.length > 0 && (
-          <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Phone className="h-5 w-5 text-red-600" />
-              <h2 className="text-xl font-bold text-red-900">
-                🔥 Priority - Call These First! ({priorityLeads.length})
-              </h2>
-            </div>
-            <div className="space-y-3">
-              {priorityLeads.map((lead) => (
-                <div
-                  key={lead.id}
-                  className="bg-white rounded-lg p-4 shadow-sm border border-red-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-semibold text-lg">{lead.name}</h3>
-                        <span className="text-gray-600">{lead.phone}</span>
+        {/* Today's Priority Section */}
+        {activeTab === 'active' && (todayVisits.length > 0 || needsActionToday.length > 0) && (
+          <div className="space-y-4">
+            {/* Today's Visits */}
+            {todayVisits.length > 0 && (
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="h-5 w-5 text-orange-600" />
+                  <h2 className="text-lg font-bold text-orange-900">
+                    Factory Visits Today ({todayVisits.length})
+                  </h2>
+                </div>
+                <div className="grid gap-2">
+                  {todayVisits.map((lead) => (
+                    <div
+                      key={lead.id}
+                      className="bg-white rounded-lg p-3 shadow-sm border border-orange-200 flex items-center justify-between"
+                    >
+                      <div>
+                        <span className="font-semibold">{lead.name}</span>
+                        <span className="text-gray-600 ml-2">+{lead.countryCode} {lead.phone}</span>
                         {lead.company && (
-                          <span className="text-sm text-gray-500">({lead.company})</span>
+                          <span className="text-sm text-gray-500 ml-2">({lead.company})</span>
                         )}
                       </div>
-                      {lead.quickNote && (
-                        <p className="text-sm text-gray-600 mt-1">"{lead.quickNote}"</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(lead)}
-                      >
-                        Edit
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(lead)}>
+                        View Details
                       </Button>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Needs Action Today */}
+            {needsActionToday.length > 0 && (
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🔥</span>
+                  <h2 className="text-lg font-bold text-red-900">
+                    Action Needed Today ({needsActionToday.length})
+                  </h2>
+                </div>
+                <div className="grid gap-2">
+                  {needsActionToday.slice(0, 5).map((lead) => (
+                    <div
+                      key={lead.id}
+                      className="bg-white rounded-lg p-3 shadow-sm border border-red-200 flex items-center justify-between"
+                    >
+                      <div>
+                        <span className="font-semibold">{lead.name}</span>
+                        <span className="text-gray-600 ml-2">+{lead.countryCode} {lead.phone}</span>
+                        {lead.nextActionType && (
+                          <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">
+                            {lead.nextActionType.replace(/_/g, ' ')}
+                          </span>
+                        )}
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(lead)}>
+                        Take Action
+                      </Button>
+                    </div>
+                  ))}
+                  {needsActionToday.length > 5 && (
+                    <div className="text-sm text-gray-500 text-center">
+                      +{needsActionToday.length - 5} more leads need action
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -209,18 +245,17 @@ export default function LeadsPage() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onQuickUpdate={handleQuickUpdate}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          counts={counts}
           statusFilter={statusFilter}
-          priorityFilter={priorityFilter}
+          inquiryTypeFilter={inquiryTypeFilter}
           callOutcomeFilter={callOutcomeFilter}
           searchQuery={searchQuery}
-          followUpFrom={followUpFrom}
-          followUpTo={followUpTo}
           onStatusFilterChange={setStatusFilter}
-          onPriorityFilterChange={setPriorityFilter}
+          onInquiryTypeFilterChange={setInquiryTypeFilter}
           onCallOutcomeFilterChange={setCallOutcomeFilter}
           onSearchChange={setSearchQuery}
-          onFollowUpFromChange={setFollowUpFrom}
-          onFollowUpToChange={setFollowUpTo}
           onResetFilters={handleResetFilters}
         />
 

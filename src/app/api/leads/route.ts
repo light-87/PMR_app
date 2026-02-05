@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
-import { LeadStatus, Priority, CallOutcome } from '@prisma/client'
+import {
+  LeadStatus,
+  InquiryType,
+  CallOutcome,
+  NextActionType,
+  VisitStatus,
+  VisitOutcome,
+  DeadLeadReason,
+} from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,13 +18,20 @@ export const dynamic = 'force-dynamic'
 const createLeadSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   phone: z.string().min(1, 'Phone is required'),
-  company: z.string().optional(),
+  whatsappNumber: z.string().optional().nullable(),
+  countryCode: z.string().default('91'),
+  company: z.string().optional().nullable(),
+  inquiryType: z.nativeEnum(InquiryType).optional(),
   status: z.nativeEnum(LeadStatus).optional(),
-  priority: z.nativeEnum(Priority).optional(),
-  nextFollowUpDate: z.string().transform(str => str ? new Date(str) : undefined).optional(),
   callOutcome: z.nativeEnum(CallOutcome).optional().nullable(),
-  quickNote: z.string().optional().nullable(),
-  additionalNotes: z.string().optional().nullable(),
+  nextActionType: z.nativeEnum(NextActionType).optional().nullable(),
+  nextActionDate: z.string().transform(str => str ? new Date(str) : undefined).optional(),
+  visitDate: z.string().transform(str => str ? new Date(str) : undefined).optional(),
+  visitStatus: z.nativeEnum(VisitStatus).optional().nullable(),
+  visitOutcome: z.nativeEnum(VisitOutcome).optional().nullable(),
+  visitNotes: z.string().optional().nullable(),
+  deadReason: z.nativeEnum(DeadLeadReason).optional().nullable(),
+  notes: z.string().optional().nullable(),
 })
 
 // GET - Fetch all leads with filtering
@@ -40,20 +55,34 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') as LeadStatus | null
-    const priority = searchParams.get('priority') as Priority | null
-    const search = searchParams.get('search')
+    const inquiryType = searchParams.get('inquiryType') as InquiryType | null
     const callOutcome = searchParams.get('callOutcome') as CallOutcome | null
-    const followUpFrom = searchParams.get('followUpFrom')
-    const followUpTo = searchParams.get('followUpTo')
+    const search = searchParams.get('search')
+    const tab = searchParams.get('tab') // 'active', 'dead', 'visits', 'all'
+    const visitDateFrom = searchParams.get('visitDateFrom')
+    const visitDateTo = searchParams.get('visitDateTo')
+    const actionDateFrom = searchParams.get('actionDateFrom')
+    const actionDateTo = searchParams.get('actionDateTo')
 
     // Build filter conditions
-    const where: Record<string, unknown> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, any> = {}
+
+    // Tab-based filtering
+    if (tab === 'active') {
+      where.status = { not: 'DEAD' }
+    } else if (tab === 'dead') {
+      where.status = 'DEAD'
+    } else if (tab === 'visits') {
+      where.visitDate = { not: null }
+      where.visitStatus = { in: ['SCHEDULED', 'RESCHEDULED'] }
+    }
 
     if (status) where.status = status
-    if (priority) where.priority = priority
+    if (inquiryType) where.inquiryType = inquiryType
     if (callOutcome) where.callOutcome = callOutcome
 
-    // Search across name, phone, and company
+    // Search across name, phone, company
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -62,16 +91,29 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Date range filter for nextFollowUpDate
-    if (followUpFrom || followUpTo) {
-      where.nextFollowUpDate = {}
-      if (followUpFrom) {
-        (where.nextFollowUpDate as Record<string, Date>).gte = new Date(followUpFrom)
+    // Date range filter for visitDate
+    if (visitDateFrom || visitDateTo) {
+      where.visitDate = {}
+      if (visitDateFrom) {
+        where.visitDate.gte = new Date(visitDateFrom)
       }
-      if (followUpTo) {
-        const toDate = new Date(followUpTo)
+      if (visitDateTo) {
+        const toDate = new Date(visitDateTo)
         toDate.setHours(23, 59, 59, 999)
-        ;(where.nextFollowUpDate as Record<string, Date>).lte = toDate
+        where.visitDate.lte = toDate
+      }
+    }
+
+    // Date range filter for nextActionDate
+    if (actionDateFrom || actionDateTo) {
+      where.nextActionDate = {}
+      if (actionDateFrom) {
+        where.nextActionDate.gte = new Date(actionDateFrom)
+      }
+      if (actionDateTo) {
+        const toDate = new Date(actionDateTo)
+        toDate.setHours(23, 59, 59, 999)
+        where.nextActionDate.lte = toDate
       }
     }
 
@@ -79,18 +121,36 @@ export async function GET(request: NextRequest) {
     const leads = await prisma.lead.findMany({
       where,
       orderBy: [
-        { priority: 'desc' }, // URGENT first
-        { nextFollowUpDate: 'asc' }, // Soonest follow-ups first
+        { nextActionDate: 'asc' }, // Soonest actions first
         { createdAt: 'desc' }, // Newest first
       ],
     })
 
     const total = await prisma.lead.count({ where })
 
+    // Get counts for tabs
+    const activeCount = await prisma.lead.count({
+      where: { status: { not: 'DEAD' } },
+    })
+    const deadCount = await prisma.lead.count({
+      where: { status: 'DEAD' },
+    })
+    const visitsCount = await prisma.lead.count({
+      where: {
+        visitDate: { not: null },
+        visitStatus: { in: ['SCHEDULED', 'RESCHEDULED'] },
+      },
+    })
+
     return NextResponse.json({
       success: true,
       leads,
       total,
+      counts: {
+        active: activeCount,
+        dead: deadCount,
+        visits: visitsCount,
+      },
     })
   } catch (error) {
     console.error('Leads GET error:', error)
@@ -123,29 +183,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createLeadSchema.parse(body)
 
-    // Auto-set lastCallDate if status is CALLED
-    const lastCallDate = validatedData.status === 'CALLED' ? new Date() : undefined
-
-    // Auto-set nextFollowUpDate if status is CALL_IN_7_DAYS and not manually set
-    let nextFollowUpDate = validatedData.nextFollowUpDate
-    if (validatedData.status === 'CALL_IN_7_DAYS' && !nextFollowUpDate) {
-      nextFollowUpDate = new Date()
-      nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 7)
-    }
-
     // Create lead
     const lead = await prisma.lead.create({
       data: {
         name: validatedData.name,
         phone: validatedData.phone,
+        whatsappNumber: validatedData.whatsappNumber,
+        countryCode: validatedData.countryCode || '91',
         company: validatedData.company,
+        inquiryType: validatedData.inquiryType || 'PRODUCT_DETAILS',
         status: validatedData.status || 'NEW',
-        priority: validatedData.priority || 'MEDIUM',
-        lastCallDate,
-        nextFollowUpDate,
         callOutcome: validatedData.callOutcome,
-        quickNote: validatedData.quickNote,
-        additionalNotes: validatedData.additionalNotes,
+        nextActionType: validatedData.nextActionType,
+        nextActionDate: validatedData.nextActionDate,
+        visitDate: validatedData.visitDate,
+        visitStatus: validatedData.visitStatus,
+        visitOutcome: validatedData.visitOutcome,
+        visitNotes: validatedData.visitNotes,
+        deadReason: validatedData.deadReason,
+        notes: validatedData.notes,
       },
     })
 

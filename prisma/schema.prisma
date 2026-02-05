@@ -192,57 +192,113 @@ model SystemSettings {
 model Lead {
   id               String       @id @default(cuid())
 
-  // Basic Info (minimal typing)
+  // Basic Info
   name             String
   phone            String
-  company          String?      // Optional
+  whatsappNumber   String?      // If different from phone
+  countryCode      String       @default("91") // Default India
+  company          String?
 
-  // Status Tracking (all dropdowns!)
+  // Inquiry Classification
+  inquiryType      InquiryType  @default(PRODUCT_DETAILS)
+
+  // Status Tracking
   status           LeadStatus   @default(NEW)
-  priority         Priority     @default(MEDIUM)
 
-  // Call Tracking (auto dates + dropdowns)
-  lastCallDate     DateTime?    // Auto-filled when status changes
-  nextFollowUpDate DateTime?    // Date picker
-  callOutcome      CallOutcome? // Dropdown of what happened
+  // Call Tracking
+  lastCallDate     DateTime?
+  callOutcome      CallOutcome?
 
-  // Notes (predefined options + optional free text)
-  quickNote        String?      // Dropdown selection
-  additionalNotes  String?      // Optional typing for extra details
+  // Follow-up Scheduling
+  nextActionType   NextActionType?
+  nextActionDate   DateTime?
+
+  // Factory Visit Tracking
+  visitDate        DateTime?
+  visitStatus      VisitStatus?
+  visitOutcome     VisitOutcome?
+  visitNotes       String?
+
+  // Dead Lead Tracking
+  deadReason       DeadLeadReason?
+
+  // Notes
+  notes            String?
 
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
   @@index([status])
-  @@index([priority])
-  @@index([nextFollowUpDate])
+  @@index([inquiryType])
+  @@index([nextActionDate])
+  @@index([visitDate])
   @@index([lastCallDate])
 }
 
-enum LeadStatus {
-  NEW              // Just added
-  NEED_TO_CALL     // Ready to call
-  CALLED           // Called today
-  GOT_RESPONSE     // They responded!
-  ON_HOLD          // Waiting/paused
-  CALL_IN_7_DAYS   // Schedule for next week
-  CONVERTED        // Success - became customer
-  NOT_INTERESTED   // Dead lead
+enum InquiryType {
+  PRODUCT_DETAILS  // Replied 1 - wants product info
+  FACTORY_SETUP    // Replied 2 - wants factory setup info
+  GENERAL_CALL     // Replied 3 - just wants a call
 }
 
-enum Priority {
-  LOW      // Green
-  MEDIUM   // Yellow
-  HIGH     // Orange
-  URGENT   // Red
+enum LeadStatus {
+  // Active Statuses
+  NEW                    // Just came in from WhatsApp
+  NEED_TO_CALL           // Ready to call
+  CALLED                 // First call done
+  DETAILS_SENT           // Product details shared
+  OWNER_CALL_SCHEDULED   // Factory inquiry - call with owner scheduled
+  VISIT_SCHEDULED        // Factory visit date fixed
+  FOLLOW_UP              // Need to follow up
+  NEGOTIATING            // Price/terms discussion
+  CONVERTED              // Deal done!
+
+  // Dead Status
+  DEAD                   // Not interested / Wrong number / Spam
 }
 
 enum CallOutcome {
-  NO_ANSWER           // Didn't pick up
-  BUSY                // Said they're busy
-  INTERESTED          // Wants to know more
-  NEED_INFO           // Asked for details
-  CALL_BACK_LATER     // Said call again
-  WRONG_NUMBER        // Invalid contact
-  NOT_INTERESTED_NOW  // Not interested
+  INTERESTED             // Genuine, wants to proceed
+  NEEDS_MORE_INFO        // Genuine, needs details first
+  CALL_BACK_LATER        // Asked to call again
+  TALK_TO_BOSS           // Decision maker not available
+  NOT_GENUINE            // Fake/spam inquiry
+  WRONG_NUMBER           // Invalid contact
+  NO_ANSWER              // Didn't pick up
+  BUSY                   // Said they're busy
 }
+
+enum NextActionType {
+  CALL                   // Need to call
+  SEND_DETAILS           // Send product info
+  SCHEDULE_OWNER_CALL    // Arrange call with owner
+  SCHEDULE_VISIT         // Arrange factory visit
+  FOLLOW_UP_CALL         // Follow up after details sent
+  SEND_QUOTE             // Send pricing
+}
+
+enum VisitStatus {
+  SCHEDULED              // Visit is scheduled
+  RESCHEDULED            // Visit was rescheduled
+  COMPLETED              // Visit happened
+  NO_SHOW                // They didn't come
+  CANCELLED              // Visit cancelled
+}
+
+enum VisitOutcome {
+  VERY_INTERESTED        // Going to buy
+  INTERESTED             // Likely to buy
+  NEEDS_TIME             // Thinking about it
+  NOT_INTERESTED         // Won't buy
+}
+
+enum DeadLeadReason {
+  NOT_INTERESTED         // Confirmed not interested
+  WRONG_NUMBER           // Invalid number
+  SPAM                   // Spam/fake inquiry
+  CLICKED_BY_MISTAKE     // Accidental click
+  COMPETITOR             // Competitor inquiry
+  ALREADY_HAS_SUPPLIER   // Has existing supplier
+}
+
+// Remove old Priority enum as it's no longer needed

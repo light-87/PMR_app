@@ -384,39 +384,78 @@ export interface DailyReportResponse {
 }
 
 // Lead Types
+export type InquiryType = 'PRODUCT_DETAILS' | 'FACTORY_SETUP' | 'GENERAL_CALL'
+
 export type LeadStatus =
   | 'NEW'
   | 'NEED_TO_CALL'
   | 'CALLED'
-  | 'GOT_RESPONSE'
-  | 'ON_HOLD'
-  | 'CALL_IN_7_DAYS'
+  | 'DETAILS_SENT'
+  | 'OWNER_CALL_SCHEDULED'
+  | 'VISIT_SCHEDULED'
+  | 'FOLLOW_UP'
+  | 'NEGOTIATING'
   | 'CONVERTED'
-  | 'NOT_INTERESTED'
-
-export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  | 'DEAD'
 
 export type CallOutcome =
+  | 'INTERESTED'
+  | 'NEEDS_MORE_INFO'
+  | 'CALL_BACK_LATER'
+  | 'TALK_TO_BOSS'
+  | 'NOT_GENUINE'
+  | 'WRONG_NUMBER'
   | 'NO_ANSWER'
   | 'BUSY'
+
+export type NextActionType =
+  | 'CALL'
+  | 'SEND_DETAILS'
+  | 'SCHEDULE_OWNER_CALL'
+  | 'SCHEDULE_VISIT'
+  | 'FOLLOW_UP_CALL'
+  | 'SEND_QUOTE'
+
+export type VisitStatus =
+  | 'SCHEDULED'
+  | 'RESCHEDULED'
+  | 'COMPLETED'
+  | 'NO_SHOW'
+  | 'CANCELLED'
+
+export type VisitOutcome =
+  | 'VERY_INTERESTED'
   | 'INTERESTED'
-  | 'NEED_INFO'
-  | 'CALL_BACK_LATER'
+  | 'NEEDS_TIME'
+  | 'NOT_INTERESTED'
+
+export type DeadLeadReason =
+  | 'NOT_INTERESTED'
   | 'WRONG_NUMBER'
-  | 'NOT_INTERESTED_NOW'
+  | 'SPAM'
+  | 'CLICKED_BY_MISTAKE'
+  | 'COMPETITOR'
+  | 'ALREADY_HAS_SUPPLIER'
 
 export interface Lead {
   id: string
   name: string
   phone: string
+  whatsappNumber?: string
+  countryCode: string
   company?: string
+  inquiryType: InquiryType
   status: LeadStatus
-  priority: Priority
   lastCallDate?: string
-  nextFollowUpDate?: string
   callOutcome?: CallOutcome
-  quickNote?: string
-  additionalNotes?: string
+  nextActionType?: NextActionType
+  nextActionDate?: string
+  visitDate?: string
+  visitStatus?: VisitStatus
+  visitOutcome?: VisitOutcome
+  visitNotes?: string
+  deadReason?: DeadLeadReason
+  notes?: string
   createdAt: string
   updatedAt: string
 }
@@ -424,13 +463,20 @@ export interface Lead {
 export interface LeadInput {
   name: string
   phone: string
+  whatsappNumber?: string
+  countryCode?: string
   company?: string
+  inquiryType?: InquiryType
   status?: LeadStatus
-  priority?: Priority
-  nextFollowUpDate?: Date
   callOutcome?: CallOutcome
-  quickNote?: string
-  additionalNotes?: string
+  nextActionType?: NextActionType
+  nextActionDate?: Date
+  visitDate?: Date
+  visitStatus?: VisitStatus
+  visitOutcome?: VisitOutcome
+  visitNotes?: string
+  deadReason?: DeadLeadReason
+  notes?: string
 }
 
 export interface LeadResponse {
@@ -439,52 +485,67 @@ export interface LeadResponse {
 }
 
 // Lead Display Labels
+export const INQUIRY_TYPE_LABELS: Record<InquiryType, string> = {
+  PRODUCT_DETAILS: 'Product Details',
+  FACTORY_SETUP: 'Factory Setup',
+  GENERAL_CALL: 'General Call',
+}
+
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   NEW: 'New',
   NEED_TO_CALL: 'Need to Call',
   CALLED: 'Called',
-  GOT_RESPONSE: 'Got Response',
-  ON_HOLD: 'On Hold',
-  CALL_IN_7_DAYS: 'Call in 7 Days',
+  DETAILS_SENT: 'Details Sent',
+  OWNER_CALL_SCHEDULED: 'Owner Call Scheduled',
+  VISIT_SCHEDULED: 'Visit Scheduled',
+  FOLLOW_UP: 'Follow Up',
+  NEGOTIATING: 'Negotiating',
   CONVERTED: 'Converted',
-  NOT_INTERESTED: 'Not Interested',
-}
-
-export const PRIORITY_LABELS: Record<Priority, string> = {
-  LOW: 'Low',
-  MEDIUM: 'Medium',
-  HIGH: 'High',
-  URGENT: 'Urgent',
+  DEAD: 'Dead',
 }
 
 export const CALL_OUTCOME_LABELS: Record<CallOutcome, string> = {
-  NO_ANSWER: "Didn't pick up",
-  BUSY: 'Said they are busy',
-  INTERESTED: 'Wants to know more',
-  NEED_INFO: 'Asked for details',
-  CALL_BACK_LATER: 'Call back later',
-  WRONG_NUMBER: 'Wrong number',
-  NOT_INTERESTED_NOW: 'Not interested',
+  INTERESTED: 'Interested - Genuine',
+  NEEDS_MORE_INFO: 'Needs More Info',
+  CALL_BACK_LATER: 'Call Back Later',
+  TALK_TO_BOSS: 'Talk to Boss',
+  NOT_GENUINE: 'Not Genuine / Spam',
+  WRONG_NUMBER: 'Wrong Number',
+  NO_ANSWER: 'No Answer',
+  BUSY: 'Busy',
 }
 
-export const QUICK_NOTE_OPTIONS = [
-  'Interested in product',
-  'Need to send quote',
-  'Waiting for decision',
-  'Asked to call back',
-  'Not available - try later',
-  'Wrong number',
-  'Already has supplier',
-  'Budget constraints',
-  'Will contact us',
-]
+export const NEXT_ACTION_LABELS: Record<NextActionType, string> = {
+  CALL: 'Call',
+  SEND_DETAILS: 'Send Details',
+  SCHEDULE_OWNER_CALL: 'Schedule Owner Call',
+  SCHEDULE_VISIT: 'Schedule Visit',
+  FOLLOW_UP_CALL: 'Follow Up Call',
+  SEND_QUOTE: 'Send Quote',
+}
 
-// Priority colors for UI
-export const PRIORITY_COLORS: Record<Priority, string> = {
-  LOW: 'bg-green-100 text-green-800 border-green-300',
-  MEDIUM: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  HIGH: 'bg-orange-100 text-orange-800 border-orange-300',
-  URGENT: 'bg-red-100 text-red-800 border-red-300',
+export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
+  SCHEDULED: 'Scheduled',
+  RESCHEDULED: 'Rescheduled',
+  COMPLETED: 'Completed',
+  NO_SHOW: 'No Show',
+  CANCELLED: 'Cancelled',
+}
+
+export const VISIT_OUTCOME_LABELS: Record<VisitOutcome, string> = {
+  VERY_INTERESTED: 'Very Interested',
+  INTERESTED: 'Interested',
+  NEEDS_TIME: 'Needs Time',
+  NOT_INTERESTED: 'Not Interested',
+}
+
+export const DEAD_REASON_LABELS: Record<DeadLeadReason, string> = {
+  NOT_INTERESTED: 'Not Interested',
+  WRONG_NUMBER: 'Wrong Number',
+  SPAM: 'Spam / Fake',
+  CLICKED_BY_MISTAKE: 'Clicked by Mistake',
+  COMPETITOR: 'Competitor',
+  ALREADY_HAS_SUPPLIER: 'Already Has Supplier',
 }
 
 // Status colors for UI
@@ -492,12 +553,35 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   NEW: 'bg-blue-100 text-blue-800 border-blue-300',
   NEED_TO_CALL: 'bg-purple-100 text-purple-800 border-purple-300',
   CALLED: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-  GOT_RESPONSE: 'bg-green-100 text-green-800 border-green-300',
-  ON_HOLD: 'bg-gray-100 text-gray-800 border-gray-300',
-  CALL_IN_7_DAYS: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  DETAILS_SENT: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  OWNER_CALL_SCHEDULED: 'bg-amber-100 text-amber-800 border-amber-300',
+  VISIT_SCHEDULED: 'bg-orange-100 text-orange-800 border-orange-300',
+  FOLLOW_UP: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  NEGOTIATING: 'bg-lime-100 text-lime-800 border-lime-300',
   CONVERTED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  NOT_INTERESTED: 'bg-red-100 text-red-800 border-red-300',
+  DEAD: 'bg-gray-100 text-gray-800 border-gray-300',
 }
+
+// Inquiry type colors for UI
+export const INQUIRY_TYPE_COLORS: Record<InquiryType, string> = {
+  PRODUCT_DETAILS: 'bg-blue-100 text-blue-800 border-blue-300',
+  FACTORY_SETUP: 'bg-orange-100 text-orange-800 border-orange-300',
+  GENERAL_CALL: 'bg-gray-100 text-gray-800 border-gray-300',
+}
+
+// Common country codes
+export const COUNTRY_CODES = [
+  { code: '91', country: 'India', flag: '🇮🇳' },
+  { code: '1', country: 'USA/Canada', flag: '🇺🇸' },
+  { code: '44', country: 'UK', flag: '🇬🇧' },
+  { code: '971', country: 'UAE', flag: '🇦🇪' },
+  { code: '966', country: 'Saudi Arabia', flag: '🇸🇦' },
+  { code: '65', country: 'Singapore', flag: '🇸🇬' },
+  { code: '60', country: 'Malaysia', flag: '🇲🇾' },
+  { code: '61', country: 'Australia', flag: '🇦🇺' },
+  { code: '49', country: 'Germany', flag: '🇩🇪' },
+  { code: '33', country: 'France', flag: '🇫🇷' },
+]
 
 // Inventory Dashboard Types
 export type TimePeriodView = 'daily' | 'monthly' | 'alltime'

@@ -17,16 +17,26 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Pencil, Trash2, Search, X } from 'lucide-react'
+import { Pencil, Trash2, Search, X, MessageCircle, Phone, Calendar } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
   LEAD_STATUS_LABELS,
-  PRIORITY_LABELS,
   LEAD_STATUS_COLORS,
-  PRIORITY_COLORS,
+  INQUIRY_TYPE_LABELS,
+  INQUIRY_TYPE_COLORS,
   CALL_OUTCOME_LABELS,
+  NEXT_ACTION_LABELS,
+  VISIT_STATUS_LABELS,
+  DEAD_REASON_LABELS,
 } from '@/types'
-import type { Lead, LeadStatus, Priority, CallOutcome } from '@/types'
+import type {
+  Lead,
+  LeadStatus,
+  InquiryType,
+  CallOutcome,
+} from '@/types'
+
+type TabType = 'active' | 'dead' | 'visits' | 'all'
 
 interface LeadsTableProps {
   leads: Lead[]
@@ -35,18 +45,21 @@ interface LeadsTableProps {
   onEdit: (lead: Lead) => void
   onDelete: (id: string) => void
   onQuickUpdate: (id: string, updates: Partial<Lead>) => void
+  activeTab: TabType
+  onTabChange: (tab: TabType) => void
+  counts: {
+    active: number
+    dead: number
+    visits: number
+  }
   statusFilter: LeadStatus | 'ALL'
-  priorityFilter: Priority | 'ALL'
+  inquiryTypeFilter: InquiryType | 'ALL'
   callOutcomeFilter: CallOutcome | 'ALL'
   searchQuery: string
-  followUpFrom: string
-  followUpTo: string
   onStatusFilterChange: (status: LeadStatus | 'ALL') => void
-  onPriorityFilterChange: (priority: Priority | 'ALL') => void
+  onInquiryTypeFilterChange: (type: InquiryType | 'ALL') => void
   onCallOutcomeFilterChange: (outcome: CallOutcome | 'ALL') => void
   onSearchChange: (search: string) => void
-  onFollowUpFromChange: (date: string) => void
-  onFollowUpToChange: (date: string) => void
   onResetFilters: () => void
 }
 
@@ -57,18 +70,17 @@ export function LeadsTable({
   onEdit,
   onDelete,
   onQuickUpdate,
+  activeTab,
+  onTabChange,
+  counts,
   statusFilter,
-  priorityFilter,
+  inquiryTypeFilter,
   callOutcomeFilter,
   searchQuery,
-  followUpFrom,
-  followUpTo,
   onStatusFilterChange,
-  onPriorityFilterChange,
+  onInquiryTypeFilterChange,
   onCallOutcomeFilterChange,
   onSearchChange,
-  onFollowUpFromChange,
-  onFollowUpToChange,
   onResetFilters,
 }: LeadsTableProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -79,21 +91,26 @@ export function LeadsTable({
     setUpdatingId(null)
   }
 
-  const handleQuickPriorityChange = async (leadId: string, newPriority: Priority) => {
-    setUpdatingId(leadId)
-    await onQuickUpdate(leadId, { priority: newPriority })
-    setUpdatingId(null)
+  const openWhatsApp = (lead: Lead) => {
+    const number = lead.whatsappNumber || lead.phone
+    // Remove any non-digit characters except +
+    const cleanNumber = number.replace(/[^\d]/g, '')
+    const fullNumber = lead.countryCode + cleanNumber
+    window.open(`https://wa.me/${fullNumber}`, '_blank')
   }
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-'
     const date = new Date(dateString)
     const now = new Date()
-    const diffTime = date.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    now.setHours(0, 0, 0, 0)
+    const dateOnly = new Date(date)
+    dateOnly.setHours(0, 0, 0, 0)
+    const diffTime = dateOnly.getTime() - now.getTime()
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
 
     if (diffDays < 0) {
-      return <span className="text-red-600 font-semibold">Overdue!</span>
+      return <span className="text-red-600 font-semibold">Overdue ({Math.abs(diffDays)}d)</span>
     } else if (diffDays === 0) {
       return <span className="text-orange-600 font-semibold">Today</span>
     } else if (diffDays === 1) {
@@ -113,21 +130,46 @@ export function LeadsTable({
 
     if (diffDays === 0) return 'Today'
     if (diffDays === 1) return 'Yesterday'
-    if (diffDays <= 7) return `${diffDays} days ago`
-    if (diffDays <= 30) return `${Math.floor(diffDays / 7)} weeks ago`
+    if (diffDays <= 7) return `${diffDays}d ago`
+    if (diffDays <= 30) return `${Math.floor(diffDays / 7)}w ago`
     return date.toLocaleDateString()
   }
 
   const hasActiveFilters =
     statusFilter !== 'ALL' ||
-    priorityFilter !== 'ALL' ||
+    inquiryTypeFilter !== 'ALL' ||
     callOutcomeFilter !== 'ALL' ||
-    searchQuery !== '' ||
-    followUpFrom !== '' ||
-    followUpTo !== ''
+    searchQuery !== ''
+
+  const tabs: { id: TabType; label: string; count: number }[] = [
+    { id: 'active', label: 'Active Leads', count: counts.active },
+    { id: 'visits', label: 'Visits Scheduled', count: counts.visits },
+    { id: 'dead', label: 'Dead Leads', count: counts.dead },
+    { id: 'all', label: 'All', count: counts.active + counts.dead },
+  ]
 
   return (
     <div className="space-y-4">
+      {/* Tabs */}
+      <div className="flex gap-2 border-b">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            {tab.label}
+            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100">
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Search and Filters */}
       <div className="bg-gray-50 p-4 rounded-lg space-y-4">
         {/* Search Row */}
@@ -143,7 +185,7 @@ export function LeadsTable({
             />
           </div>
           <div className="text-sm text-gray-600">
-            Total: <span className="font-bold">{leads.length}</span> leads
+            Showing: <span className="font-bold">{leads.length}</span> leads
           </div>
         </div>
 
@@ -157,7 +199,7 @@ export function LeadsTable({
                 onStatusFilterChange(value as LeadStatus | 'ALL')
               }
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -172,19 +214,19 @@ export function LeadsTable({
           </div>
 
           <div>
-            <label className="text-sm font-medium block mb-1">Priority</label>
+            <label className="text-sm font-medium block mb-1">Inquiry Type</label>
             <Select
-              value={priorityFilter}
+              value={inquiryTypeFilter}
               onValueChange={(value) =>
-                onPriorityFilterChange(value as Priority | 'ALL')
+                onInquiryTypeFilterChange(value as InquiryType | 'ALL')
               }
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Priorities</SelectItem>
-                {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
+                <SelectItem value="ALL">All Types</SelectItem>
+                {Object.entries(INQUIRY_TYPE_LABELS).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -215,26 +257,6 @@ export function LeadsTable({
             </Select>
           </div>
 
-          <div>
-            <label className="text-sm font-medium block mb-1">Follow-up From</label>
-            <Input
-              type="date"
-              value={followUpFrom}
-              onChange={(e) => onFollowUpFromChange(e.target.value)}
-              className="w-[150px]"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium block mb-1">Follow-up To</label>
-            <Input
-              type="date"
-              value={followUpTo}
-              onChange={(e) => onFollowUpToChange(e.target.value)}
-              className="w-[150px]"
-            />
-          </div>
-
           {hasActiveFilters && (
             <Button
               variant="outline"
@@ -254,13 +276,13 @@ export function LeadsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Company</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Inquiry</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
               <TableHead>Last Call</TableHead>
-              <TableHead>Next Follow-Up</TableHead>
+              <TableHead>Next Action</TableHead>
+              {activeTab === 'visits' && <TableHead>Visit</TableHead>}
+              {activeTab === 'dead' && <TableHead>Reason</TableHead>}
               <TableHead>Notes</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -268,20 +290,45 @@ export function LeadsTable({
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                  No leads found. Click "Add Lead" to create one!
+                <TableCell colSpan={activeTab === 'visits' || activeTab === 'dead' ? 9 : 8} className="text-center py-8 text-gray-500">
+                  {activeTab === 'dead'
+                    ? 'No dead leads found.'
+                    : activeTab === 'visits'
+                    ? 'No visits scheduled.'
+                    : 'No leads found. Click "Add Lead" to create one!'}
                 </TableCell>
               </TableRow>
             ) : (
               leads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">{lead.name}</TableCell>
-                  <TableCell>{lead.phone}</TableCell>
-                  <TableCell className="text-gray-600">
-                    {lead.company || '-'}
-                  </TableCell>
+                <TableRow key={lead.id} className={lead.status === 'DEAD' ? 'bg-gray-50' : ''}>
+                  {/* Contact Info */}
                   <TableCell>
-                    {canEdit ? (
+                    <div className="space-y-1">
+                      <div className="font-medium">{lead.name}</div>
+                      <div className="text-sm text-gray-600 flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        +{lead.countryCode} {lead.phone}
+                      </div>
+                      {lead.company && (
+                        <div className="text-xs text-gray-500">{lead.company}</div>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  {/* Inquiry Type */}
+                  <TableCell>
+                    <span
+                      className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        INQUIRY_TYPE_COLORS[lead.inquiryType]
+                      }`}
+                    >
+                      {INQUIRY_TYPE_LABELS[lead.inquiryType]}
+                    </span>
+                  </TableCell>
+
+                  {/* Status */}
+                  <TableCell>
+                    {canEdit && lead.status !== 'DEAD' ? (
                       <Select
                         value={lead.status}
                         onValueChange={(value) =>
@@ -290,7 +337,7 @@ export function LeadsTable({
                         disabled={updatingId === lead.id}
                       >
                         <SelectTrigger
-                          className={`w-[150px] ${LEAD_STATUS_COLORS[lead.status]}`}
+                          className={`w-[160px] text-xs ${LEAD_STATUS_COLORS[lead.status]}`}
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -304,62 +351,96 @@ export function LeadsTable({
                       </Select>
                     ) : (
                       <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm ${
+                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                           LEAD_STATUS_COLORS[lead.status]
                         }`}
                       >
                         {LEAD_STATUS_LABELS[lead.status]}
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell>
-                    {canEdit ? (
-                      <Select
-                        value={lead.priority}
-                        onValueChange={(value) =>
-                          handleQuickPriorityChange(lead.id, value as Priority)
-                        }
-                        disabled={updatingId === lead.id}
-                      >
-                        <SelectTrigger
-                          className={`w-[120px] ${PRIORITY_COLORS[lead.priority]}`}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm ${
-                          PRIORITY_COLORS[lead.priority]
-                        }`}
-                      >
-                        {PRIORITY_LABELS[lead.priority]}
-                      </span>
+                    {lead.callOutcome && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {CALL_OUTCOME_LABELS[lead.callOutcome]}
+                      </div>
                     )}
                   </TableCell>
+
+                  {/* Last Call */}
                   <TableCell className="text-sm text-gray-600">
                     {getTimeSinceLastCall(lead.lastCallDate)}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {formatDate(lead.nextFollowUpDate)}
+
+                  {/* Next Action */}
+                  <TableCell>
+                    {lead.nextActionType && (
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-gray-700">
+                          {NEXT_ACTION_LABELS[lead.nextActionType]}
+                        </div>
+                        <div className="text-sm">
+                          {formatDate(lead.nextActionDate)}
+                        </div>
+                      </div>
+                    )}
+                    {!lead.nextActionType && '-'}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">
-                    {lead.quickNote || lead.additionalNotes || '-'}
+
+                  {/* Visit Info (only in visits tab) */}
+                  {activeTab === 'visits' && (
+                    <TableCell>
+                      {lead.visitDate && (
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">
+                            {new Date(lead.visitDate).toLocaleDateString()}
+                          </div>
+                          {lead.visitStatus && (
+                            <div className="text-xs text-gray-500">
+                              {VISIT_STATUS_LABELS[lead.visitStatus]}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
+
+                  {/* Dead Reason (only in dead tab) */}
+                  {activeTab === 'dead' && (
+                    <TableCell>
+                      {lead.deadReason && (
+                        <span className="text-xs text-gray-600">
+                          {DEAD_REASON_LABELS[lead.deadReason]}
+                        </span>
+                      )}
+                    </TableCell>
+                  )}
+
+                  {/* Notes */}
+                  <TableCell className="text-sm text-gray-600 max-w-[150px]">
+                    <div className="truncate" title={lead.notes || ''}>
+                      {lead.notes || '-'}
+                    </div>
                   </TableCell>
+
+                  {/* Actions */}
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1">
+                      {/* WhatsApp Button */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openWhatsApp(lead)}
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                        title="Open WhatsApp"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+
                       {canEdit && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => onEdit(lead)}
+                          title="Edit"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -369,6 +450,7 @@ export function LeadsTable({
                           size="sm"
                           variant="destructive"
                           onClick={() => onDelete(lead.id)}
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
