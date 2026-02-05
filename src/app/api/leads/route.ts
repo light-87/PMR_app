@@ -41,12 +41,39 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') as LeadStatus | null
     const priority = searchParams.get('priority') as Priority | null
+    const search = searchParams.get('search')
+    const callOutcome = searchParams.get('callOutcome') as CallOutcome | null
+    const followUpFrom = searchParams.get('followUpFrom')
+    const followUpTo = searchParams.get('followUpTo')
 
     // Build filter conditions
     const where: Record<string, unknown> = {}
 
     if (status) where.status = status
     if (priority) where.priority = priority
+    if (callOutcome) where.callOutcome = callOutcome
+
+    // Search across name, phone, and company
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { company: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
+    // Date range filter for nextFollowUpDate
+    if (followUpFrom || followUpTo) {
+      where.nextFollowUpDate = {}
+      if (followUpFrom) {
+        (where.nextFollowUpDate as Record<string, Date>).gte = new Date(followUpFrom)
+      }
+      if (followUpTo) {
+        const toDate = new Date(followUpTo)
+        toDate.setHours(23, 59, 59, 999)
+        ;(where.nextFollowUpDate as Record<string, Date>).lte = toDate
+      }
+    }
 
     // Fetch all leads
     const leads = await prisma.lead.findMany({

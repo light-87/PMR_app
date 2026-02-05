@@ -8,7 +8,7 @@ import { LeadsTable } from './components/LeadsTable'
 import { useAuthStore } from '@/store/authStore'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Plus, Phone } from 'lucide-react'
-import type { Lead, LeadStatus, Priority } from '@/types'
+import type { Lead, LeadStatus, Priority, CallOutcome } from '@/types'
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -18,6 +18,10 @@ export default function LeadsPage() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null)
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'ALL'>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'ALL'>('ALL')
+  const [callOutcomeFilter, setCallOutcomeFilter] = useState<CallOutcome | 'ALL'>('ALL')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [followUpFrom, setFollowUpFrom] = useState('')
+  const [followUpTo, setFollowUpTo] = useState('')
   const { role } = useAuthStore()
 
   const isAdmin = role === 'ADMIN'
@@ -28,6 +32,10 @@ export default function LeadsPage() {
       const params = new URLSearchParams()
       if (statusFilter !== 'ALL') params.append('status', statusFilter)
       if (priorityFilter !== 'ALL') params.append('priority', priorityFilter)
+      if (callOutcomeFilter !== 'ALL') params.append('callOutcome', callOutcomeFilter)
+      if (searchQuery.trim()) params.append('search', searchQuery.trim())
+      if (followUpFrom) params.append('followUpFrom', followUpFrom)
+      if (followUpTo) params.append('followUpTo', followUpTo)
 
       const response = await fetch(`/api/leads?${params}`)
       const data = await response.json()
@@ -70,7 +78,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, priorityFilter])
+  }, [statusFilter, priorityFilter, callOutcomeFilter, searchQuery, followUpFrom, followUpTo])
 
   useEffect(() => {
     fetchLeads()
@@ -115,6 +123,15 @@ export default function LeadsPage() {
     } catch (error) {
       console.error('Failed to update lead:', error)
     }
+  }
+
+  const handleResetFilters = () => {
+    setStatusFilter('ALL')
+    setPriorityFilter('ALL')
+    setCallOutcomeFilter('ALL')
+    setSearchQuery('')
+    setFollowUpFrom('')
+    setFollowUpTo('')
   }
 
   if (loading) {
@@ -194,8 +211,17 @@ export default function LeadsPage() {
           onQuickUpdate={handleQuickUpdate}
           statusFilter={statusFilter}
           priorityFilter={priorityFilter}
+          callOutcomeFilter={callOutcomeFilter}
+          searchQuery={searchQuery}
+          followUpFrom={followUpFrom}
+          followUpTo={followUpTo}
           onStatusFilterChange={setStatusFilter}
           onPriorityFilterChange={setPriorityFilter}
+          onCallOutcomeFilterChange={setCallOutcomeFilter}
+          onSearchChange={setSearchQuery}
+          onFollowUpFromChange={setFollowUpFrom}
+          onFollowUpToChange={setFollowUpTo}
+          onResetFilters={handleResetFilters}
         />
 
         {/* Add/Edit Form */}
