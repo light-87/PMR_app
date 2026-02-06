@@ -281,14 +281,24 @@ export async function POST(request: NextRequest) {
       if (leadsData.length > 0) {
         for (const row of leadsData) {
           try {
-            // Map old status values to new ones (check raw string before casting)
+            // Map old status values to new simplified ones (check raw string before casting)
             const rawStatus = row.Status as string || 'NEW'
             let status: LeadStatus = 'NEW'
-            if (rawStatus === 'GOT_RESPONSE' || rawStatus === 'ON_HOLD' || rawStatus === 'CALL_IN_7_DAYS') {
-              status = 'FOLLOW_UP'
-            } else if (rawStatus === 'NOT_INTERESTED') {
+            // Map old statuses to new simplified statuses
+            if (rawStatus === 'NEW') {
+              status = 'NEW'
+            } else if (rawStatus === 'NEED_TO_CALL' || rawStatus === 'CALLED' || rawStatus === 'DETAILS_SENT') {
+              status = 'CONTACTED'
+            } else if (rawStatus === 'OWNER_CALL_SCHEDULED' || rawStatus === 'FOLLOW_UP' || rawStatus === 'NEGOTIATING' || rawStatus === 'GOT_RESPONSE' || rawStatus === 'ON_HOLD' || rawStatus === 'CALL_IN_7_DAYS') {
+              status = 'INTERESTED'
+            } else if (rawStatus === 'VISIT_SCHEDULED') {
+              status = 'VISIT_SCHEDULED'
+            } else if (rawStatus === 'CONVERTED') {
+              status = 'CONVERTED'
+            } else if (rawStatus === 'DEAD' || rawStatus === 'NOT_INTERESTED') {
               status = 'DEAD'
-            } else if (['NEW', 'NEED_TO_CALL', 'CALLED', 'DETAILS_SENT', 'OWNER_CALL_SCHEDULED', 'VISIT_SCHEDULED', 'FOLLOW_UP', 'NEGOTIATING', 'CONVERTED', 'DEAD'].includes(rawStatus)) {
+            } else if (['CONTACTED', 'INTERESTED'].includes(rawStatus)) {
+              // Already new status values
               status = rawStatus as LeadStatus
             }
 
