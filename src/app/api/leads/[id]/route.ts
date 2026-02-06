@@ -76,8 +76,8 @@ export async function PUT(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: Record<string, any> = { ...validatedData }
 
-    // Auto-set lastCallDate if status changed to CALLED
-    if (validatedData.status === 'CALLED' && existing.status !== 'CALLED') {
+    // Auto-set lastCallDate if status changed to CONTACTED
+    if (validatedData.status === 'CONTACTED' && existing.status !== 'CONTACTED') {
       updateData.lastCallDate = new Date()
     }
 

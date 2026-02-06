@@ -388,13 +388,9 @@ export type InquiryType = 'PRODUCT_DETAILS' | 'FACTORY_SETUP' | 'GENERAL_CALL'
 
 export type LeadStatus =
   | 'NEW'
-  | 'NEED_TO_CALL'
-  | 'CALLED'
-  | 'DETAILS_SENT'
-  | 'OWNER_CALL_SCHEDULED'
+  | 'CONTACTED'
+  | 'INTERESTED'
   | 'VISIT_SCHEDULED'
-  | 'FOLLOW_UP'
-  | 'NEGOTIATING'
   | 'CONVERTED'
   | 'DEAD'
 
@@ -493,13 +489,9 @@ export const INQUIRY_TYPE_LABELS: Record<InquiryType, string> = {
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   NEW: 'New',
-  NEED_TO_CALL: 'Need to Call',
-  CALLED: 'Called',
-  DETAILS_SENT: 'Details Sent',
-  OWNER_CALL_SCHEDULED: 'Owner Call Scheduled',
+  CONTACTED: 'Contacted',
+  INTERESTED: 'Interested',
   VISIT_SCHEDULED: 'Visit Scheduled',
-  FOLLOW_UP: 'Follow Up',
-  NEGOTIATING: 'Negotiating',
   CONVERTED: 'Converted',
   DEAD: 'Dead',
 }
@@ -551,13 +543,9 @@ export const DEAD_REASON_LABELS: Record<DeadLeadReason, string> = {
 // Status colors for UI
 export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   NEW: 'bg-blue-100 text-blue-800 border-blue-300',
-  NEED_TO_CALL: 'bg-purple-100 text-purple-800 border-purple-300',
-  CALLED: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-  DETAILS_SENT: 'bg-cyan-100 text-cyan-800 border-cyan-300',
-  OWNER_CALL_SCHEDULED: 'bg-amber-100 text-amber-800 border-amber-300',
+  CONTACTED: 'bg-purple-100 text-purple-800 border-purple-300',
+  INTERESTED: 'bg-yellow-100 text-yellow-800 border-yellow-300',
   VISIT_SCHEDULED: 'bg-orange-100 text-orange-800 border-orange-300',
-  FOLLOW_UP: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  NEGOTIATING: 'bg-lime-100 text-lime-800 border-lime-300',
   CONVERTED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   DEAD: 'bg-gray-100 text-gray-800 border-gray-300',
 }

@@ -244,13 +244,9 @@ enum InquiryType {
 enum LeadStatus {
   // Active Statuses
   NEW                    // Just came in from WhatsApp
-  NEED_TO_CALL           // Ready to call
-  CALLED                 // First call done
-  DETAILS_SENT           // Product details shared
-  OWNER_CALL_SCHEDULED   // Factory inquiry - call with owner scheduled
-  VISIT_SCHEDULED        // Factory visit date fixed
-  FOLLOW_UP              // Need to follow up
-  NEGOTIATING            // Price/terms discussion
+  CONTACTED              // We've reached out (called/messaged)
+  INTERESTED             // Genuine, following up
+  VISIT_SCHEDULED        // Factory visit planned
   CONVERTED              // Deal done!
 
   // Dead Status

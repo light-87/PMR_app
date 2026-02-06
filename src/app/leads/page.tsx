@@ -129,16 +129,6 @@ export default function LeadsPage() {
     )
   })
 
-  // Get leads that need action today
-  const needsActionToday = leads.filter((lead) => {
-    if (lead.status === 'DEAD' || lead.status === 'CONVERTED') return false
-    if (!lead.nextActionDate) return false
-    const actionDate = new Date(lead.nextActionDate)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    actionDate.setHours(0, 0, 0, 0)
-    return actionDate <= today
-  })
 
   if (loading) {
     return (
@@ -163,77 +153,34 @@ export default function LeadsPage() {
           </Button>
         </div>
 
-        {/* Today's Priority Section */}
-        {activeTab === 'active' && (todayVisits.length > 0 || needsActionToday.length > 0) && (
-          <div className="space-y-4">
-            {/* Today's Visits */}
-            {todayVisits.length > 0 && (
-              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar className="h-5 w-5 text-orange-600" />
-                  <h2 className="text-lg font-bold text-orange-900">
-                    Factory Visits Today ({todayVisits.length})
-                  </h2>
+        {/* Today's Visits Section */}
+        {activeTab === 'active' && todayVisits.length > 0 && (
+          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="h-5 w-5 text-orange-600" />
+              <h2 className="text-lg font-bold text-orange-900">
+                Factory Visits Today ({todayVisits.length})
+              </h2>
+            </div>
+            <div className="grid gap-2">
+              {todayVisits.map((lead) => (
+                <div
+                  key={lead.id}
+                  className="bg-white rounded-lg p-3 shadow-sm border border-orange-200 flex items-center justify-between"
+                >
+                  <div>
+                    <span className="font-semibold">{lead.name}</span>
+                    <span className="text-gray-600 ml-2">+{lead.countryCode} {lead.phone}</span>
+                    {lead.company && (
+                      <span className="text-sm text-gray-500 ml-2">({lead.company})</span>
+                    )}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => handleEdit(lead)}>
+                    View Details
+                  </Button>
                 </div>
-                <div className="grid gap-2">
-                  {todayVisits.map((lead) => (
-                    <div
-                      key={lead.id}
-                      className="bg-white rounded-lg p-3 shadow-sm border border-orange-200 flex items-center justify-between"
-                    >
-                      <div>
-                        <span className="font-semibold">{lead.name}</span>
-                        <span className="text-gray-600 ml-2">+{lead.countryCode} {lead.phone}</span>
-                        {lead.company && (
-                          <span className="text-sm text-gray-500 ml-2">({lead.company})</span>
-                        )}
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(lead)}>
-                        View Details
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Needs Action Today */}
-            {needsActionToday.length > 0 && (
-              <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">🔥</span>
-                  <h2 className="text-lg font-bold text-red-900">
-                    Action Needed Today ({needsActionToday.length})
-                  </h2>
-                </div>
-                <div className="grid gap-2">
-                  {needsActionToday.slice(0, 5).map((lead) => (
-                    <div
-                      key={lead.id}
-                      className="bg-white rounded-lg p-3 shadow-sm border border-red-200 flex items-center justify-between"
-                    >
-                      <div>
-                        <span className="font-semibold">{lead.name}</span>
-                        <span className="text-gray-600 ml-2">+{lead.countryCode} {lead.phone}</span>
-                        {lead.nextActionType && (
-                          <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded">
-                            {lead.nextActionType.replace(/_/g, ' ')}
-                          </span>
-                        )}
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(lead)}>
-                        Take Action
-                      </Button>
-                    </div>
-                  ))}
-                  {needsActionToday.length > 5 && (
-                    <div className="text-sm text-gray-500 text-center">
-                      +{needsActionToday.length - 5} more leads need action
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         )}
 
