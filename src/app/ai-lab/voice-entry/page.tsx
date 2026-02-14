@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   RotateCcw,
+  Lightbulb,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -242,9 +243,56 @@ export default function VoiceEntryPage() {
                 ? 'Recording... Tap to stop'
                 : 'Tap to start recording'}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Example: &quot;पल्लवी मध्ये रमेशकडून 50 टाटा जी स्टॉक करा&quot;
-            </p>
+
+            {/* Example suggestions */}
+            <div className="mt-6 text-left max-w-md mx-auto">
+              <div className="flex items-center gap-1.5 mb-2 justify-center">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                <p className="text-xs font-medium text-muted-foreground">Try saying something like:</p>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-[10px] font-medium text-blue-600 uppercase tracking-wide mb-1">Inventory / Stock Entry</p>
+                  <div className="space-y-1">
+                    {[
+                      '"पल्लवी मध्ये रमेशकडून 50 टाटा जी स्टॉक करा"',
+                      '"तुळाराम वेअरहाउस मध्ये 30 PMR 10L विकले"',
+                      '"फॅक्टरी मध्ये 100 Tata G बकेट आले आज"',
+                      '"पल्लवी warehouse मधून 20 PMR 20L sell, buyer Mahesh"',
+                      '"आज 25 HP बकेट स्टॉक केले, पल्लवी, रामू कडून"',
+                    ].map((ex) => (
+                      <p key={ex} className="text-[11px] text-muted-foreground bg-blue-50 border border-blue-100 rounded px-2 py-1">{ex}</p>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-medium text-green-600 uppercase tracking-wide mb-1">Expense / Income Entry</p>
+                  <div className="space-y-1">
+                    {[
+                      '"कॅश मधून 15000 शिवाजी ट्रान्सपोर्टला दिले"',
+                      '"रमेश कडून 50000 income आला cash मध्ये"',
+                      '"आज diesel साठी 8000 खर्च, प्रशांत गायधने account"',
+                      '"HDFC मध्ये Suresh कडून 25000 जमा झाले"',
+                      '"पेट्रोल साठी 2000 रुपये cash मधून दिले"',
+                    ].map((ex) => (
+                      <p key={ex} className="text-[11px] text-muted-foreground bg-green-50 border border-green-100 rounded px-2 py-1">{ex}</p>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-medium text-orange-600 uppercase tracking-wide mb-1">Production / Urea</p>
+                  <div className="space-y-1">
+                    {[
+                      '"आज 8 bags urea add केले"',
+                      '"1 batch produce केला आज"',
+                      '"360 kg urea टाकले production साठी"',
+                    ].map((ex) => (
+                      <p key={ex} className="text-[11px] text-muted-foreground bg-orange-50 border border-orange-100 rounded px-2 py-1">{ex}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {error && (
               <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 flex items-center gap-2 justify-center">

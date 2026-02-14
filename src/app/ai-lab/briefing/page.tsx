@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { ProtectedLayout } from '@/components/Layout/ProtectedLayout'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Sun, RefreshCw, Loader2, Volume2 } from 'lucide-react'
+import { ArrowLeft, Sun, RefreshCw, Loader2, Volume2, Lightbulb } from 'lucide-react'
 import Link from 'next/link'
+import { MarkdownRenderer } from '../components/MarkdownRenderer'
 
 interface BriefingSummary {
   yesterdayIncome: number
@@ -154,12 +155,39 @@ export default function BriefingPage() {
                 <Sun className="h-5 w-5 text-amber-500" />
                 <h2 className="font-semibold">Morning Briefing</h2>
               </div>
-              <div className="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap">
-                {briefing}
-              </div>
+              <MarkdownRenderer content={briefing} />
             </div>
           </div>
         )}
+
+        {/* What this can do */}
+        <div className="mt-6 rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Lightbulb className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-medium">What you get in the briefing</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              { text: 'Yesterday\'s income vs expenses summary', color: 'bg-green-50 text-green-700 border-green-200' },
+              { text: 'Which bucket types sold the most', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+              { text: 'Low stock warnings for inventory', color: 'bg-red-50 text-red-700 border-red-200' },
+              { text: 'Urea & DEF production status', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+              { text: 'Leads that need follow-up today', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+              { text: 'Visits scheduled for today', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+              { text: 'Cash flow alerts (negative days)', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { text: 'Comparison with previous day performance', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+              { text: 'Top customers from yesterday', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+              { text: 'Pending payments and receivables', color: 'bg-pink-50 text-pink-700 border-pink-200' },
+            ].map((item) => (
+              <div key={item.text} className={`text-xs px-2.5 py-1.5 rounded border ${item.color}`}>
+                {item.text}
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Tip: Use &quot;Read Aloud&quot; to listen to the briefing in Marathi while driving or walking.
+          </p>
+        </div>
       </div>
     </ProtectedLayout>
   )

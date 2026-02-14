@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { ProtectedLayout } from '@/components/Layout/ProtectedLayout'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Factory, RefreshCw, Loader2, Beaker, Droplets, TrendingUp, Users } from 'lucide-react'
+import { ArrowLeft, Factory, RefreshCw, Loader2, Beaker, Droplets, TrendingUp, Users, Lightbulb } from 'lucide-react'
 import Link from 'next/link'
+import { MarkdownRenderer } from '../components/MarkdownRenderer'
 
 interface AdvisorMetrics {
   ureaStock: number
@@ -129,12 +130,41 @@ export default function ProductionAdvisorPage() {
                 <Factory className="h-5 w-5 text-primary" />
                 <h2 className="font-semibold">Production Recommendations</h2>
               </div>
-              <div className="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap">
-                {advice}
-              </div>
+              <MarkdownRenderer content={advice} />
             </div>
           </div>
         )}
+
+        {/* What the advisor analyzes */}
+        <div className="mt-6 rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Lightbulb className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-medium">What the advisor tells you</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              { text: 'Should you produce a batch today?', color: 'bg-green-50 text-green-700 border-green-200' },
+              { text: '7-day production schedule plan', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+              { text: 'Which bucket types to fill first (by demand)', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+              { text: 'When to order more urea bags', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+              { text: 'Stockout risk warnings per bucket type', color: 'bg-red-50 text-red-700 border-red-200' },
+              { text: 'Days of stock remaining per product', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { text: 'Impact of upcoming lead conversions on demand', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+              { text: 'Urea-to-DEF conversion efficiency check', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+              { text: 'Sales velocity trends (growing/declining)', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+              { text: 'Warehouse balance — where to move stock', color: 'bg-pink-50 text-pink-700 border-pink-200' },
+              { text: 'Weekend/holiday production planning', color: 'bg-lime-50 text-lime-700 border-lime-200' },
+              { text: 'Capital optimization — avoid overproduction', color: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200' },
+            ].map((item) => (
+              <div key={item.text} className={`text-xs px-2.5 py-1.5 rounded border ${item.color}`}>
+                {item.text}
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Tip: Check this every morning before starting production. Hit Refresh after adding new stock entries.
+          </p>
+        </div>
       </div>
     </ProtectedLayout>
   )
