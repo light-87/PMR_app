@@ -687,3 +687,61 @@ export interface InventoryDashboardResponse {
   message?: string
   error?: string
 }
+
+// AI Lab Types
+
+export interface VoiceParsedData {
+  module: 'inventory' | 'expense' | 'stock'
+  date: string
+  // Inventory fields
+  warehouse?: Warehouse
+  bucketType?: BucketType
+  action?: ActionType
+  quantity?: number
+  buyerSeller?: string
+  // Expense fields
+  amount?: number
+  account?: ExpenseAccount
+  transactionType?: TransactionType
+  name?: string
+  // Stock fields
+  stockType?: StockTransactionType
+  stockCategory?: StockCategory
+  unit?: StockUnit
+  description?: string
+  // Metadata
+  isNewName: boolean
+  confidence: number // 0-1
+}
+
+export interface VoiceParseResponse {
+  transcript: string
+  parsed: VoiceParsedData
+  existingNames: string[]
+}
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+}
+
+export type AIQueryType =
+  | 'EXPENSE_SUMMARY'
+  | 'INVENTORY_STOCK'
+  | 'INVENTORY_SALES'
+  | 'STOCK_STATUS'
+  | 'LEAD_PIPELINE'
+  | 'CUSTOMER_STATEMENT'
+  | 'PRODUCTION_STATS'
+  | 'GENERAL'
+
+export interface AIExperiment {
+  id: string
+  name: string
+  description: string
+  category: 'quick-actions' | 'insights' | 'planning'
+  status: 'experimental'
+  href: string
+}
