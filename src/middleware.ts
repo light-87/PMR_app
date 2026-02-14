@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
     const role = payload.role as string
 
     // Admin-only routes
-    if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/statements')) {
+    if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/statements') || path.startsWith('/ai-lab')) {
       if (role !== 'ADMIN') {
         return NextResponse.redirect(new URL('/inventory', request.url))
       }

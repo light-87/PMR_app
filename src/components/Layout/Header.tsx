@@ -34,6 +34,7 @@ export function Header() {
     { href: '/dashboard', label: 'Dashboard', roles: ['ADMIN'] },
     { href: '/inventory-dashboard', label: 'Inventory Dashboard', roles: ['ADMIN'] },
     { href: '/statements', label: 'Statements', roles: ['ADMIN'] },
+    { href: '/ai-lab', label: 'AI Lab', roles: ['ADMIN'] },
     { href: '/admin', label: 'Admin', roles: ['ADMIN'] },
   ]
 
