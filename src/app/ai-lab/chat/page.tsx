@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { ProtectedLayout } from '@/components/Layout/ProtectedLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Send, Loader2, MessageSquare, User, Bot, Lightbulb } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, MessageSquare, User, Bot, Lightbulb, Mic, MicOff } from 'lucide-react'
 import Link from 'next/link'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
 
@@ -58,7 +58,11 @@ export default function AskPMRPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -102,12 +106,73 @@ export default function AskPMRPage() {
     }
   }
 
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm',
+      })
+      mediaRecorderRef.current = mediaRecorder
+      chunksRef.current = []
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop())
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        await transcribeAndSend(audioBlob)
+      }
+
+      mediaRecorder.start()
+      setRecording(true)
+    } catch (err) {
+      console.error('Microphone error:', err)
+    }
+  }, [])
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      setRecording(false)
+    }
+  }, [])
+
+  async function transcribeAndSend(audioBlob: Blob) {
+    setTranscribing(true)
+    try {
+      const formData = new FormData()
+      formData.append('audio', audioBlob, 'recording.webm')
+      formData.append('language', 'mr-IN')
+
+      const res = await fetch('/api/ai-lab/stt', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success && data.data.transcript) {
+        // Auto-send the transcribed text as a chat message
+        await handleSend(data.data.transcript)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
+
+  const isBusy = loading || transcribing
 
   return (
     <ProtectedLayout>
@@ -136,7 +201,7 @@ export default function AskPMRPage() {
             <div className="py-4">
               <div className="text-center mb-6">
                 <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-                <p className="mt-3 text-sm text-muted-foreground">Ask anything about your business</p>
+                <p className="mt-3 text-sm text-muted-foreground">Ask anything about your business — type or use the mic</p>
               </div>
 
               {/* Categorized suggestions */}
@@ -197,13 +262,20 @@ export default function AskPMRPage() {
             </div>
           ))}
 
-          {loading && (
+          {(loading || transcribing) && (
             <div className="flex gap-3">
               <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <Bot className="h-3.5 w-3.5 text-primary" />
               </div>
-              <div className="bg-muted rounded-lg px-3 py-2">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <div className="bg-muted rounded-lg px-3 py-2 text-xs text-muted-foreground">
+                {transcribing ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Transcribing your voice...
+                  </span>
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
               </div>
             </div>
           )}
@@ -211,17 +283,30 @@ export default function AskPMRPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
+        {/* Input with mic */}
         <div className="flex gap-2 border-t pt-3">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your question... (Marathi or English)"
-            disabled={loading}
+            placeholder={recording ? 'Recording... tap mic to stop' : 'Type or speak your question...'}
+            disabled={isBusy || recording}
             className="flex-1"
           />
-          <Button onClick={() => handleSend()} disabled={loading || !input.trim()} size="icon">
+          <Button
+            onClick={recording ? stopRecording : startRecording}
+            disabled={isBusy}
+            size="icon"
+            variant={recording ? 'destructive' : 'outline'}
+            title={recording ? 'Stop recording' : 'Ask with voice'}
+          >
+            {recording ? (
+              <MicOff className="h-4 w-4 animate-pulse" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </Button>
+          <Button onClick={() => handleSend()} disabled={isBusy || !input.trim()} size="icon">
             <Send className="h-4 w-4" />
           </Button>
         </div>
