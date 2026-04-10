@@ -12,6 +12,7 @@ import { RestoreManager } from './components/RestoreManager'
 import { BulkUploadForm } from './components/BulkUploadForm'
 import { DeleteRecentImport } from './components/DeleteRecentImport'
 import { FactoryReset } from './components/FactoryReset'
+import { FixProductionUserCount } from './components/FixProductionUserCount'
 
 export default function AdminPage() {
   const [pins, setPins] = useState({
@@ -113,6 +114,8 @@ export default function AdminPage() {
             ))}
           </CardContent>
         </Card>
+
+        <FixProductionUserCount />
 
         <Card>
           <CardHeader>
