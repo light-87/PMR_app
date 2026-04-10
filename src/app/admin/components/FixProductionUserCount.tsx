@@ -409,7 +409,6 @@ export function FixProductionUserCount() {
               <Button
                 variant="outline"
                 onClick={handleReset}
-                disabled={status.state === 'loading'}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
@@ -420,30 +419,18 @@ export function FixProductionUserCount() {
                   <Button
                     onClick={handlePreview}
                     className="bg-amber-600 hover:bg-amber-700"
-                    disabled={status.state === 'loading'}
                   >
-                    {status.state === 'loading' && (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    )}
                     Recalculate Preview
                   </Button>
 
                   <Button
                     onClick={handleApply}
                     className="bg-green-600 hover:bg-green-700"
-                    disabled={status.state === 'loading'}
                   >
-                    {status.state === 'loading' ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Applying...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Apply Fix & Recalculate
-                      </>
-                    )}
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Apply Fix & Recalculate
+                    </>
                   </Button>
                 </>
               )}
@@ -451,12 +438,9 @@ export function FixProductionUserCount() {
               {status.state === 'idle' && status.selectedTx && (
                 <Button
                   onClick={handlePreview}
-                  disabled={!correctedQuantity || status.state === 'loading'}
+                  disabled={!correctedQuantity}
                   className="bg-amber-600 hover:bg-amber-700"
                 >
-                  {status.state === 'loading' && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
                   Preview Changes
                 </Button>
               )}
