@@ -1,73 +1,109 @@
 'use client'
 
-import { useState } from 'react'
-import { AlertCircle, CheckCircle2, Loader2, RotateCcw } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { AlertCircle, CheckCircle2, Loader2, RotateCcw, TrendingDown } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+
+interface StockTransaction {
+  id: string
+  date: string
+  type: string
+  quantity: number
+  runningTotal: number
+  description: string
+}
 
 interface FixStatus {
-  state: 'idle' | 'preview' | 'loading' | 'success' | 'error'
-  currentValue: number | null
-  newValue: number | null
+  state: 'idle' | 'fetching' | 'preview' | 'loading' | 'success' | 'error'
   message: string
+  transactions: StockTransaction[]
+  selectedTx: StockTransaction | null
+  newQuantity: number | null
   details: {
-    oldValue: number
-    newValue: number
+    txId: string
+    oldQuantity: number
+    newQuantity: number
     difference: number
-    percentageChange: number
-    recordsAffected: number
+    affectedTransactions: number
+    newRunningTotal: number
   } | null
 }
 
 export function FixProductionUserCount() {
-  const [inputValue, setInputValue] = useState('')
   const [status, setStatus] = useState<FixStatus>({
     state: 'idle',
-    currentValue: null,
-    newValue: null,
     message: '',
+    transactions: [],
+    selectedTx: null,
+    newQuantity: null,
     details: null,
   })
 
-  // Fetch current database value
-  const handleFetchCurrent = async () => {
-    try {
-      const response = await fetch('/api/admin/fix-production-user-count?action=get-current')
-      const data = await response.json()
+  const [searchQuantity, setSearchQuantity] = useState('90000')
+  const [correctedQuantity, setCorrectedQuantity] = useState('9000')
 
-      if (data.success) {
-        setStatus(prev => ({
-          ...prev,
-          currentValue: data.currentValue,
-          state: 'idle',
-        }))
-        setInputValue('')
-      } else {
+  // Fetch recent stock transactions
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setStatus(prev => ({ ...prev, state: 'fetching' }))
+        const response = await fetch('/api/stock?limit=50')
+        const data = await response.json()
+
+        if (data.success) {
+          setStatus(prev => ({
+            ...prev,
+            transactions: data.transactions || [],
+            state: 'idle',
+          }))
+        }
+      } catch (error) {
         setStatus(prev => ({
           ...prev,
           state: 'error',
-          message: data.message || 'Failed to fetch current value',
+          message: 'Failed to fetch transactions',
         }))
       }
-    } catch (error) {
+    }
+
+    fetchTransactions()
+  }, [])
+
+  // Find the mistaken transaction
+  const findMisstakenTransaction = () => {
+    const searchVal = Number(searchQuantity)
+    const found = status.transactions.find(tx => tx.quantity === searchVal)
+
+    if (!found) {
       setStatus(prev => ({
         ...prev,
         state: 'error',
-        message: 'Error fetching current value',
+        message: `No transaction found with quantity ${searchVal}. Showing recent transactions above.`,
+        selectedTx: null,
       }))
+      return
     }
+
+    setStatus(prev => ({
+      ...prev,
+      selectedTx: found,
+      state: 'idle',
+      message: '',
+    }))
   }
 
-  // Preview the fix (dry run)
+  // Preview the correction
   const handlePreview = async () => {
-    if (!inputValue || isNaN(Number(inputValue))) {
+    if (!status.selectedTx || !correctedQuantity) {
       setStatus(prev => ({
         ...prev,
         state: 'error',
-        message: 'Please enter a valid number',
+        message: 'Please select a transaction and enter corrected quantity',
       }))
       return
     }
@@ -75,25 +111,27 @@ export function FixProductionUserCount() {
     try {
       setStatus(prev => ({ ...prev, state: 'loading' }))
 
-      const response = await fetch('/api/admin/fix-production-user-count', {
+      const newQty = Number(correctedQuantity)
+      const response = await fetch('/api/admin/fix-stock-entry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'preview',
-          newValue: Number(inputValue),
+          transactionId: status.selectedTx.id,
+          newQuantity: newQty,
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setStatus({
+        setStatus(prev => ({
+          ...prev,
           state: 'preview',
-          currentValue: data.details.oldValue,
-          newValue: data.details.newValue,
-          message: 'Preview ready. Review the changes below.',
+          newQuantity: newQty,
           details: data.details,
-        })
+          message: 'Preview ready - review the changes below',
+        }))
       } else {
         setStatus(prev => ({
           ...prev,
@@ -112,38 +150,32 @@ export function FixProductionUserCount() {
 
   // Apply the fix
   const handleApply = async () => {
-    if (!inputValue || isNaN(Number(inputValue))) {
-      setStatus(prev => ({
-        ...prev,
-        state: 'error',
-        message: 'Please enter a valid number',
-      }))
-      return
-    }
+    if (!status.selectedTx || !correctedQuantity) return
 
     try {
       setStatus(prev => ({ ...prev, state: 'loading' }))
 
-      const response = await fetch('/api/admin/fix-production-user-count', {
+      const newQty = Number(correctedQuantity)
+      const response = await fetch('/api/admin/fix-stock-entry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'apply',
-          newValue: Number(inputValue),
+          transactionId: status.selectedTx.id,
+          newQuantity: newQty,
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setStatus({
+        setStatus(prev => ({
+          ...prev,
           state: 'success',
-          currentValue: data.details.oldValue,
-          newValue: data.details.newValue,
-          message: '✅ Production user count fixed successfully!',
+          newQuantity: newQty,
           details: data.details,
-        })
-        setInputValue('')
+          message: '✅ Stock transaction fixed and running totals recalculated!',
+        }))
       } else {
         setStatus(prev => ({
           ...prev,
@@ -160,108 +192,160 @@ export function FixProductionUserCount() {
     }
   }
 
-  // Reset form
   const handleReset = () => {
-    setInputValue('')
-    setStatus({
-      state: 'idle',
-      currentValue: null,
-      newValue: null,
-      message: '',
+    setStatus(prev => ({
+      ...prev,
+      selectedTx: null,
+      newQuantity: null,
       details: null,
-    })
+      state: 'idle',
+      message: '',
+    }))
+    setSearchQuantity('90000')
+    setCorrectedQuantity('9000')
   }
 
-  const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num)
+  const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(Math.round(num))
 
   return (
     <Card className="border-yellow-200 bg-yellow-50">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-yellow-900">
           <AlertCircle className="h-5 w-5 text-yellow-600" />
-          Fix Production User Count
+          Fix Stock Transaction (90000 → 9000)
         </CardTitle>
         <CardDescription className="text-yellow-800">
-          Correct mistaken production user count data (90000 → 9000)
+          Correct mistaken urea quantity and auto-recalculate all running totals
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Current Value Display */}
-        {status.currentValue !== null && (
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Current Database Value</Label>
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-              <div className="text-3xl font-bold text-red-600">
-                {formatNumber(status.currentValue)} ❌
+        {/* Search Section */}
+        <div className="space-y-3 p-4 bg-white rounded-lg border border-gray-200">
+          <div>
+            <Label className="text-sm font-semibold">Step 1: Find Mistaken Transaction</Label>
+            <p className="text-xs text-gray-600 mt-1">Search by incorrect quantity value</p>
+          </div>
+
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              value={searchQuantity}
+              onChange={(e) => setSearchQuantity(e.target.value)}
+              placeholder="e.g., 90000"
+              disabled={status.state === 'loading' || status.selectedTx !== null}
+              className="flex-1"
+            />
+            <Button
+              onClick={findMisstakenTransaction}
+              disabled={status.state === 'loading' || status.selectedTx !== null}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Search
+            </Button>
+          </div>
+
+          {status.selectedTx && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-900 font-semibold">✓ Transaction Found:</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-blue-700">Date:</span>
+                  <p className="font-mono">{new Date(status.selectedTx.date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="text-blue-700">Current Qty:</span>
+                  <p className="font-mono text-red-600 font-semibold">{formatNumber(status.selectedTx.quantity)} kg</p>
+                </div>
+                <div>
+                  <span className="text-blue-700">Type:</span>
+                  <p className="font-mono">{status.selectedTx.type}</p>
+                </div>
+                <div>
+                  <span className="text-blue-700">Running Total:</span>
+                  <p className="font-mono text-red-600">{formatNumber(status.selectedTx.runningTotal)} kg</p>
+                </div>
               </div>
-              <p className="text-sm text-red-700 mt-1">Incorrect value in database</p>
+            </div>
+          )}
+        </div>
+
+        {/* Correction Input */}
+        {status.selectedTx && (
+          <div className="space-y-3 p-4 bg-white rounded-lg border border-gray-200">
+            <div>
+              <Label className="text-sm font-semibold">Step 2: Enter Correct Quantity</Label>
+              <p className="text-xs text-gray-600 mt-1">What should the value actually be?</p>
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                value={correctedQuantity}
+                onChange={(e) => setCorrectedQuantity(e.target.value)}
+                placeholder="e.g., 9000"
+                disabled={status.state === 'loading' || status.state === 'preview' || status.state === 'success'}
+                className="flex-1 text-lg font-semibold"
+              />
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-fit">
+                Correct
+              </Badge>
+            </div>
+
+            <div className="flex gap-2 text-sm">
+              <span className="text-gray-600">Reducing by:</span>
+              <span className="font-semibold text-red-600">
+                -{formatNumber(Number(searchQuantity) - Number(correctedQuantity))} kg
+              </span>
+              <span className="text-gray-600">
+                ({(((Number(searchQuantity) - Number(correctedQuantity)) / Number(searchQuantity)) * 100).toFixed(1)}%)
+              </span>
             </div>
           </div>
         )}
 
-        {/* Input Section */}
-        <div className="space-y-2">
-          <Label htmlFor="correct-value">Enter Correct Value</Label>
-          <Input
-            id="correct-value"
-            type="number"
-            inputMode="numeric"
-            placeholder="e.g., 9000"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            className="text-lg font-semibold"
-            disabled={status.state === 'loading'}
-          />
-          <p className="text-xs text-gray-600">
-            Enter the correct production user count value
-          </p>
-        </div>
-
-        {/* Preview Display */}
+        {/* Impact Preview */}
         {status.details && (
           <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 space-y-3">
             <h3 className="font-semibold text-blue-900 flex items-center gap-2">
-              📊 Correction Preview
+              <TrendingDown className="h-5 w-5" />
+              Impact Analysis
             </h3>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Old Value */}
               <div className="space-y-1">
-                <p className="text-xs text-blue-700">Current Value</p>
+                <p className="text-xs text-blue-700">Old Quantity</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatNumber(status.details.oldValue)}
+                  {formatNumber(status.details.oldQuantity)} kg
                 </p>
               </div>
 
-              {/* Arrow */}
-              <div className="flex items-center justify-center">
-                <div className="text-3xl font-bold text-blue-400">→</div>
+              <div className="space-y-1">
+                <p className="text-xs text-blue-700">New Quantity</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {formatNumber(status.details.newQuantity)} kg
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs text-blue-700">Adjustment</p>
+                <p className="text-xl font-bold text-orange-600">
+                  -{formatNumber(status.details.difference)} kg
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs text-blue-700">Running Total (After)</p>
+                <p className="text-xl font-bold text-blue-900">
+                  {formatNumber(status.details.newRunningTotal)} kg
+                </p>
               </div>
             </div>
 
-            {/* New Value */}
-            <div className="space-y-1">
-              <p className="text-xs text-blue-700">New Value</p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatNumber(status.details.newValue)} ✅
+            <div className="border-t border-blue-200 pt-3">
+              <p className="text-sm text-blue-900">
+                <strong>📊 Recalculation:</strong> {status.details.affectedTransactions} transaction(s) will be recalculated with corrected running totals
               </p>
-            </div>
-
-            {/* Impact Summary */}
-            <div className="border-t border-blue-200 pt-3 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-blue-700">Reduction:</span>
-                <span className="font-semibold text-red-600">
-                  -{formatNumber(status.details.difference)} ({status.details.percentageChange.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-blue-700">Records Affected:</span>
-                <span className="font-semibold text-blue-900">
-                  {status.details.recordsAffected}
-                </span>
-              </div>
             </div>
           </div>
         )}
@@ -283,16 +367,44 @@ export function FixProductionUserCount() {
           </Alert>
         )}
 
+        {/* Recent Transactions Table */}
+        {status.transactions.length > 0 && !status.selectedTx && (
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-gray-600">Recent Stock Transactions</Label>
+            <div className="max-h-64 overflow-y-auto border rounded-lg">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Date</th>
+                    <th className="px-3 py-2 text-left">Type</th>
+                    <th className="px-3 py-2 text-right">Qty (kg)</th>
+                    <th className="px-3 py-2 text-right">Running Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {status.transactions.slice(0, 20).map(tx => (
+                    <tr key={tx.id} className={tx.quantity === Number(searchQuantity) ? 'bg-yellow-100' : 'hover:bg-gray-50'}>
+                      <td className="px-3 py-2">{new Date(tx.date).toLocaleDateString()}</td>
+                      <td className="px-3 py-2">{tx.type}</td>
+                      <td className="px-3 py-2 text-right font-mono">
+                        {tx.quantity === Number(searchQuantity) ? (
+                          <span className="text-red-600 font-bold">🔴 {formatNumber(tx.quantity)}</span>
+                        ) : (
+                          formatNumber(tx.quantity)
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-600">{formatNumber(tx.runningTotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4">
-          {status.currentValue === null ? (
-            <Button
-              onClick={handleFetchCurrent}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Check Current Value
-            </Button>
-          ) : status.state === 'idle' || status.state === 'preview' ? (
+          {status.state === 'idle' || status.state === 'preview' ? (
             <>
               <Button
                 variant="outline"
@@ -303,34 +415,49 @@ export function FixProductionUserCount() {
                 Reset
               </Button>
 
-              <Button
-                onClick={handlePreview}
-                disabled={!inputValue || isNaN(Number(inputValue)) || status.state === 'loading'}
-                className="bg-amber-600 hover:bg-amber-700"
-              >
-                {status.state === 'loading' && (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                )}
-                Preview Changes
-              </Button>
-
               {status.state === 'preview' && (
-                <Button
-                  onClick={handleApply}
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={status.state === 'loading'}
-                >
-                  {status.state === 'loading' ? (
-                    <>
+                <>
+                  <Button
+                    onClick={handlePreview}
+                    className="bg-amber-600 hover:bg-amber-700"
+                    disabled={status.state === 'loading'}
+                  >
+                    {status.state === 'loading' && (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Applying...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Apply Fix
-                    </>
+                    )}
+                    Recalculate Preview
+                  </Button>
+
+                  <Button
+                    onClick={handleApply}
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={status.state === 'loading'}
+                  >
+                    {status.state === 'loading' ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Applying...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Apply Fix & Recalculate
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+
+              {status.state === 'idle' && status.selectedTx && (
+                <Button
+                  onClick={handlePreview}
+                  disabled={!correctedQuantity || status.state === 'loading'}
+                  className="bg-amber-600 hover:bg-amber-700"
+                >
+                  {status.state === 'loading' && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   )}
+                  Preview Changes
                 </Button>
               )}
             </>
@@ -340,7 +467,7 @@ export function FixProductionUserCount() {
         {/* Footer Note */}
         <div className="mt-6 p-3 bg-blue-100 border border-blue-200 rounded-lg">
           <p className="text-xs text-blue-900">
-            <strong>ℹ️ How it works:</strong> First check current value, then enter the correct value, preview the changes, and finally apply the fix. All actions are logged for audit purposes.
+            <strong>🔒 Safety:</strong> Stock quantities are read-only in normal forms. Use this fix tool only for corrections. All changes are logged for audit purposes.
           </p>
         </div>
       </CardContent>

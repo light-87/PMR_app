@@ -19,7 +19,9 @@ import { AlertCircle } from 'lucide-react'
 
 const formSchema = z.object({
   date: z.string().min(1, 'Date is required'),
-  quantityKg: z.number().positive('Quantity must be positive'),
+  quantityKg: z.number()
+    .positive('Quantity must be positive')
+    .max(50000, 'Quantity exceeds typical range (max 50,000 kg). Please verify!'),
   description: z.string().optional(),
 })
 
@@ -32,6 +34,7 @@ interface AddUreaFormProps {
 export function AddUreaForm({ onClose }: AddUreaFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
 
   const {
     register,
@@ -49,6 +52,8 @@ export function AddUreaForm({ onClose }: AddUreaFormProps) {
 
   const quantityKg = watch('quantityKg')
   const bags = quantityKg ? (quantityKg / KG_PER_BAG).toFixed(2) : '0.00'
+  const isHighQuantity = quantityKg > 20000
+  const isExtremeQuantity = quantityKg > 50000
 
   const onSubmit = async (data: FormData) => {
     setError('')
@@ -110,21 +115,50 @@ export function AddUreaForm({ onClose }: AddUreaFormProps) {
           </div>
 
           <div>
-            <Label htmlFor="quantityKg">Quantity (kg)</Label>
+            <Label htmlFor="quantityKg">
+              Quantity (kg)
+              {isHighQuantity && <span className="text-red-600 ml-1">⚠️ HIGH QUANTITY</span>}
+            </Label>
             <Input
               id="quantityKg"
               type="number"
               step="0.1"
+              placeholder="e.g., 5000, 10000"
               {...register('quantityKg', { valueAsNumber: true })}
+              className={isExtremeQuantity ? 'border-red-500' : isHighQuantity ? 'border-amber-500' : ''}
             />
             {errors.quantityKg && (
               <p className="text-sm text-red-500 mt-1">{errors.quantityKg.message}</p>
             )}
-            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <p className="text-sm text-amber-800">
+
+            {isHighQuantity && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>⚠️ Verify Quantity:</strong> You entered {quantityKg.toLocaleString()} kg.
+                  {isExtremeQuantity ? ' This exceeds typical range!' : ' Please confirm this is correct.'}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
                 <span className="font-medium">Equivalent:</span> {bags} bags
-                <span className="text-xs text-amber-600 ml-1">({KG_PER_BAG}kg per bag)</span>
+                <span className="text-xs text-blue-600 ml-1">({KG_PER_BAG}kg per bag)</span>
               </p>
+              {isHighQuantity && (
+                <label className="flex items-center mt-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={(e) => setConfirmed(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="ml-2 text-sm text-blue-900">
+                    ✓ I confirm this quantity is correct
+                  </span>
+                </label>
+              )}
             </div>
           </div>
 
@@ -142,7 +176,10 @@ export function AddUreaForm({ onClose }: AddUreaFormProps) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="submit"
+              disabled={loading || (isHighQuantity && !confirmed)}
+            >
               {loading ? 'Adding...' : 'Add Urea'}
             </Button>
           </div>
