@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuthStore } from '@/store/authStore'
+import { InstallAppButton } from '@/components/InstallAppButton'
 
 export default function LoginPage() {
   const [pin, setPin] = useState('')
@@ -52,43 +53,46 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <span className="text-2xl font-bold text-primary">PMR</span>
-          </div>
-          <CardTitle className="text-2xl">PMR Industries</CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            Enter your PIN to continue
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Input
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={pin}
-                onChange={handlePinChange}
-                placeholder="Enter 4-digit PIN"
-                className="text-center text-2xl tracking-[0.5em] h-14"
-                autoComplete="off"
-              />
+      <div className="w-full max-w-md space-y-4">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary">PMR</span>
             </div>
-            {error && (
-              <p className="text-destructive text-sm text-center">{error}</p>
-            )}
-            <Button
-              type="submit"
-              disabled={pin.length !== 4 || loading}
-              className="w-full h-11"
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            <CardTitle className="text-2xl">PMR Industries</CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Enter your PIN to continue
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pin}
+                  onChange={handlePinChange}
+                  placeholder="Enter 4-digit PIN"
+                  className="text-center text-2xl tracking-[0.5em] h-14"
+                  autoComplete="off"
+                />
+              </div>
+              {error && (
+                <p className="text-destructive text-sm text-center">{error}</p>
+              )}
+              <Button
+                type="submit"
+                disabled={pin.length !== 4 || loading}
+                className="w-full h-11"
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+        <InstallAppButton />
+      </div>
     </div>
   )
 }

@@ -36,6 +36,7 @@ export function Header() {
     { href: '/statements', label: 'Statements', roles: ['ADMIN'] },
     { href: '/ai-lab', label: 'AI Lab', roles: ['ADMIN'] },
     { href: '/admin', label: 'Admin', roles: ['ADMIN'] },
+    { href: '/employee', label: 'Employee', roles: ['ADMIN'] },
   ]
 
   const visibleNavItems = navItems.filter(item =>

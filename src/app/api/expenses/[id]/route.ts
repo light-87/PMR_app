@@ -114,6 +114,31 @@ export async function DELETE(
       )
     }
 
+    // Lockdown: LABOUR PAYMENT rows linked to a SalaryPayment must be reversed
+    // from the Employee detail page (which atomically removes both rows + restores
+    // the employee's pending balance). Direct expense deletion would orphan or
+    // violate the FK.
+    if (transaction.name === 'LABOUR PAYMENT') {
+      const linkedPayment = await prisma.salaryPayment.findFirst({
+        where: { expenseId: id },
+        select: { id: true, employeeId: true },
+      })
+      if (linkedPayment) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'SALARY_PAYMENT_LINKED',
+            message: 'This is a salary payment. Reverse it from the Employee page instead.',
+            data: {
+              salaryPaymentId: linkedPayment.id,
+              employeeId: linkedPayment.employeeId,
+            },
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     // Delete transaction
     await prisma.expenseTransaction.delete({
       where: { id },

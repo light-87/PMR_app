@@ -69,9 +69,26 @@ export default function ExpensesPage() {
 
       if (response.ok) {
         fetchData(pagination.page)
+        return
       }
+
+      // Salary-payment lockdown: redirect admin to the right place to reverse it.
+      const data = await response.json().catch(() => ({}))
+      if (data?.code === 'SALARY_PAYMENT_LINKED' && data?.data?.employeeId) {
+        const go = confirm(
+          (data.message || 'This is a salary payment.') +
+            '\n\nOpen the employee page to reverse it?'
+        )
+        if (go) {
+          window.location.href = `/employee/${data.data.employeeId}`
+        }
+        return
+      }
+
+      alert(data?.message || `Delete failed (${response.status})`)
     } catch (error) {
       console.error('Failed to delete transaction:', error)
+      alert('Failed to delete transaction')
     }
   }
 

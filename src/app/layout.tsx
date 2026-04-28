@@ -1,10 +1,22 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 
 export const metadata: Metadata = {
-  title: "PMR Industries - Inventory & Expense Manager",
-  description: "Manage inventory and expenses for PMR Industries",
+  title: "PMR Industries — Inventory, Expenses & Staff",
+  description: "Manage inventory, expenses, and staff attendance for PMR Industries",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "PMR",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1976D2",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -15,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <RegisterServiceWorker />
         {children}
       </body>
     </html>
