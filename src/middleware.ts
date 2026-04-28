@@ -14,7 +14,9 @@ export async function middleware(request: NextRequest) {
 
   // Allow public routes
   if (publicRoutes.includes(path)) {
-    return NextResponse.next()
+    const response = NextResponse.next()
+    response.headers.set('x-current-path', path)
+    return response
   }
 
   // Allow API routes to handle their own auth
@@ -78,7 +80,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/staff', request.url))
     }
 
-    return NextResponse.next()
+    const response = NextResponse.next()
+    response.headers.set('x-current-path', path)
+    return response
   } catch {
     return NextResponse.redirect(loginUrl)
   }
