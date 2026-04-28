@@ -47,14 +47,22 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next()
     }
 
-    // /employee/* — ADMIN only.
+    // /employee/* — ADMIN gets full access; EXPENSE_INVENTORY gets kiosk, pending & today only.
     if (path.startsWith('/employee')) {
-      if (role !== 'ADMIN') {
-        // Employees and others bounce to their respective home.
-        if (role === 'EMPLOYEE') return NextResponse.redirect(new URL('/staff', request.url))
-        return NextResponse.redirect(new URL('/inventory', request.url))
+      if (role === 'ADMIN') {
+        return NextResponse.next()
       }
-      return NextResponse.next()
+      if (role === 'EXPENSE_INVENTORY') {
+        const allowedSubPaths = ['/employee/kiosk', '/employee/pending', '/employee/today']
+        if (allowedSubPaths.some(p => path.startsWith(p))) {
+          return NextResponse.next()
+        }
+        // Redirect to kiosk for any other /employee/* path
+        return NextResponse.redirect(new URL('/employee/kiosk', request.url))
+      }
+      // Employees and others bounce to their respective home.
+      if (role === 'EMPLOYEE') return NextResponse.redirect(new URL('/staff', request.url))
+      return NextResponse.redirect(new URL('/inventory', request.url))
     }
 
     // Existing admin-only routes

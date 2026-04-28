@@ -3,25 +3,33 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ProtectedLayout } from '@/components/Layout/ProtectedLayout'
+import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, Camera, Clock, IndianRupee } from 'lucide-react'
+import { LayoutDashboard, Users, Camera, Clock, IndianRupee, CalendarCheck } from 'lucide-react'
 
 const subNav = [
-  { href: '/employee/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/employee', label: 'Employees', icon: Users, exact: true },
+  { href: '/employee/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
+  { href: '/employee', label: 'Employees', icon: Users, exact: true, adminOnly: true },
   { href: '/employee/kiosk', label: 'Kiosk', icon: Camera },
   { href: '/employee/pending', label: 'Pending', icon: Clock },
-  { href: '/employee/payroll', label: 'Payroll', icon: IndianRupee },
+  { href: '/employee/today', label: 'Today', icon: CalendarCheck },
+  { href: '/employee/payroll', label: 'Payroll', icon: IndianRupee, adminOnly: true },
 ]
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { role } = useAuthStore()
+
+  // EXPENSE_INVENTORY only sees Kiosk, Pending, and Today tabs
+  const visibleNav = role === 'EXPENSE_INVENTORY'
+    ? subNav.filter(item => !item.adminOnly)
+    : subNav
 
   return (
     <ProtectedLayout>
       <div className="container mx-auto px-0 py-2 max-w-6xl">
         <nav className="flex gap-1 border-b mb-6 overflow-x-auto -mx-1 px-1">
-          {subNav.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon
             const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
             return (

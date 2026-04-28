@@ -36,10 +36,18 @@ export function Header() {
     { href: '/statements', label: 'Statements', roles: ['ADMIN'] },
     { href: '/ai-lab', label: 'AI Lab', roles: ['ADMIN'] },
     { href: '/admin', label: 'Admin', roles: ['ADMIN'] },
-    { href: '/employee', label: 'Employee', roles: ['ADMIN'] },
+    { href: '/employee', label: 'Employee', roles: ['ADMIN', 'EXPENSE_INVENTORY'] },
   ]
 
-  const visibleNavItems = navItems.filter(item =>
+  // EXPENSE_INVENTORY should land on kiosk, not the employee list
+  const adjustedNavItems = navItems.map(item => {
+    if (item.href === '/employee' && role === 'EXPENSE_INVENTORY') {
+      return { ...item, href: '/employee/kiosk' }
+    }
+    return item
+  })
+
+  const visibleNavItems = adjustedNavItems.filter(item =>
     role && item.roles.includes(role)
   )
 

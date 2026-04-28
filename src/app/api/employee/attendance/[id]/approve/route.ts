@@ -16,7 +16,7 @@ type Ctx = { params: Promise<{ id: string }> }
 export async function POST(request: NextRequest, context: Ctx) {
   try {
     const session = await getSession()
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'EXPENSE_INVENTORY')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
     const { id } = await context.params

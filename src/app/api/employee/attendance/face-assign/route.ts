@@ -17,7 +17,7 @@ const schema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession()
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'EXPENSE_INVENTORY')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
     const body = await request.json().catch(() => null)

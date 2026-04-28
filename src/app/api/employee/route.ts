@@ -18,7 +18,7 @@ const createSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'EXPENSE_INVENTORY')) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
