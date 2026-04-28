@@ -3,7 +3,7 @@
 import { ProtectedLayout } from '@/components/Layout/ProtectedLayout'
 import { ApiKeySetup } from './components/ApiKeySetup'
 import { ExperimentCard } from './components/ExperimentCard'
-import { Mic, MessageSquare, Sun, Factory, FlaskConical } from 'lucide-react'
+import { Mic, MessageSquare, Sun, Factory, FlaskConical, UserCheck } from 'lucide-react'
 
 const experiments = [
   {
@@ -37,6 +37,14 @@ const experiments = [
     href: '/ai-lab/production-advisor',
     category: 'Planning',
     status: 'Experimental',
+  },
+  {
+    name: 'Payroll Lab',
+    description: 'Phase 0 sandbox for the upcoming Employee module — face recognition (face-api.js) and Web Push prototypes. Validate before Phase 1.',
+    icon: UserCheck,
+    href: '/ai-lab/payroll-lab',
+    category: 'Prototype',
+    status: 'Phase 0',
   },
 ]
 
