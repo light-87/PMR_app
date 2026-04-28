@@ -16,7 +16,7 @@ export async function GET() {
 
     const employee = await prisma.employee.findUnique({
       where: { id: session.employeeId },
-      select: { id: true, name: true, monthlySalary: true, active: true },
+      select: { id: true, name: true, monthlySalary: true, openingBalance: true, active: true },
     })
     if (!employee || !employee.active) {
       return NextResponse.json({ success: false, error: 'Account not active' }, { status: 403 })
@@ -46,7 +46,7 @@ export async function GET() {
       }),
     ])
 
-    const balance = runningBalance(attendance, payments, employee.monthlySalary)
+    const balance = runningBalance(attendance, payments, employee.monthlySalary, employee.openingBalance)
 
     // Annotate payments with the IST month string of their period for display grouping.
     const paymentsAnnotated = payments.map((p) => ({
@@ -61,9 +61,11 @@ export async function GET() {
           id: employee.id,
           name: employee.name,
           monthlySalary: employee.monthlySalary,
+          openingBalance: employee.openingBalance,
         },
         totalEarned: balance.totalEarned,
         totalPaid: balance.totalPaid,
+        openingBalance: balance.openingBalance,
         balance: balance.balance,
         byMonth: balance.byMonth,
         payments: paymentsAnnotated,

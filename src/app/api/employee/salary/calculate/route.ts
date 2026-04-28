@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
-      select: { id: true, name: true, monthlySalary: true, active: true },
+      select: { id: true, name: true, monthlySalary: true, openingBalance: true, active: true },
     })
     if (!employee) {
       return NextResponse.json({ success: false, error: 'Employee not found' }, { status: 404 })
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     ])
 
     const calc = calculateForMonth(attendance, employee.monthlySalary, month)
-    const balance = runningBalance(attendance, payments, employee.monthlySalary)
+    const balance = runningBalance(attendance, payments, employee.monthlySalary, employee.openingBalance)
 
     return NextResponse.json({
       success: true,

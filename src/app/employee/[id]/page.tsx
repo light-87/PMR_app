@@ -26,9 +26,11 @@ import {
   CheckCircle2,
   XCircle,
   Save,
+  Download,
 } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import { parseMonthString, toMonthStringIST, toDateStringIST } from '@/lib/date-utils'
+import { downloadEmployeeReport, type EmployeeReportPayload } from '../lib/report'
 
 type Tab = 'info' | 'attendance' | 'payments'
 
@@ -37,6 +39,7 @@ type Employee = {
   name: string
   phone: string
   monthlySalary: string
+  openingBalance: string
   joinedDate: string
   active: boolean
   faceDescriptorCount: number
@@ -99,10 +102,17 @@ export default function EmployeeDetailPage() {
   const [paymentsLoading, setPaymentsLoading] = useState(false)
 
   const [editing, setEditing] = useState(false)
-  const [editForm, setEditForm] = useState<{ name: string; phone: string; monthlySalary: string; active: boolean }>({
+  const [editForm, setEditForm] = useState<{
+    name: string
+    phone: string
+    monthlySalary: string
+    openingBalance: string
+    active: boolean
+  }>({
     name: '',
     phone: '',
     monthlySalary: '',
+    openingBalance: '0',
     active: true,
   })
 
@@ -127,6 +137,7 @@ export default function EmployeeDetailPage() {
         name: json.data.name,
         phone: json.data.phone,
         monthlySalary: String(json.data.monthlySalary),
+        openingBalance: String(json.data.openingBalance ?? '0'),
         active: json.data.active,
       })
     } catch (e) {
@@ -178,6 +189,7 @@ export default function EmployeeDetailPage() {
     if (editForm.name !== employee.name) body.name = editForm.name
     if (editForm.phone !== employee.phone) body.phone = editForm.phone
     if (editForm.monthlySalary !== String(employee.monthlySalary)) body.monthlySalary = parseFloat(editForm.monthlySalary)
+    if (editForm.openingBalance !== String(employee.openingBalance ?? '0')) body.openingBalance = parseFloat(editForm.openingBalance || '0')
     if (editForm.active !== employee.active) body.active = editForm.active
     if (Object.keys(body).length === 0) {
       setEditing(false)
@@ -238,6 +250,24 @@ export default function EmployeeDetailPage() {
     void loadAttendance()
   }
 
+  const [downloading, setDownloading] = useState(false)
+
+  async function downloadReport() {
+    if (!employee) return
+    setDownloading(true)
+    try {
+      const res = await fetch(`/api/employee/${employee.id}/report`)
+      const json = await res.json()
+      if (!json.success) {
+        alert(json.error || 'Failed to fetch report')
+        return
+      }
+      downloadEmployeeReport(json.data as EmployeeReportPayload)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   async function reversePayment(paymentId: string, amount: string) {
     if (
       !confirm(
@@ -290,11 +320,21 @@ export default function EmployeeDetailPage() {
             {employee.hasPushSubscription && <span className="ml-2 text-green-600">· Push enabled</span>}
           </p>
         </div>
-        <Link href={`/employee/${id}/face`}>
-          <Button variant="outline" size="sm">
-            <Camera className="h-4 w-4 mr-2" /> Re-enrol face
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={downloadReport} disabled={downloading}>
+            {downloading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Report (PDF)
           </Button>
-        </Link>
+          <Link href={`/employee/${id}/face`}>
+            <Button variant="outline" size="sm">
+              <Camera className="h-4 w-4 mr-2" /> Re-enrol face
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex border-b">
@@ -325,6 +365,16 @@ export default function EmployeeDetailPage() {
               <Field label="Name" value={employee.name} />
               <Field label="Phone" value={employee.phone} />
               <Field label="Monthly salary" value={`₹${formatCurrency(Number(employee.monthlySalary))}`} />
+              <Field
+                label="Opening balance"
+                value={
+                  Number(employee.openingBalance) === 0
+                    ? '—'
+                    : Number(employee.openingBalance) > 0
+                      ? `+₹${formatCurrency(Number(employee.openingBalance))} (owed at migration)`
+                      : `-₹${formatCurrency(Math.abs(Number(employee.openingBalance)))} (advance at migration)`
+                }
+              />
               <Field label="Joined" value={new Date(employee.joinedDate).toLocaleDateString('en-IN')} />
               <Field label="Status" value={employee.active ? 'Active' : 'Inactive'} />
               <div className="flex gap-2 pt-2">
@@ -343,6 +393,17 @@ export default function EmployeeDetailPage() {
               <LabelledInput label="Name" value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
               <LabelledInput label="Phone" value={editForm.phone} onChange={(v) => setEditForm({ ...editForm, phone: v.replace(/\D/g, '').slice(0, 15) })} />
               <LabelledInput label="Monthly salary (₹)" value={editForm.monthlySalary} onChange={(v) => setEditForm({ ...editForm, monthlySalary: v })} />
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Opening balance (₹)</label>
+                <Input
+                  value={editForm.openingBalance}
+                  onChange={(e) => setEditForm({ ...editForm, openingBalance: e.target.value.replace(/[^0-9.\-]/g, '') })}
+                  inputMode="decimal"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Carry-over from old system. <strong>+</strong> = owed at migration. <strong>−</strong> = advance given.
+                </p>
+              </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })} />
                 Active

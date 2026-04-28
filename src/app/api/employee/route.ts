@@ -10,6 +10,7 @@ const createSchema = z.object({
   phone: z.string().regex(/^\d{7,15}$/, 'Digits only, 7-15 chars'),
   pin: z.string().regex(/^\d{4}$/, '4-digit PIN required'),
   monthlySalary: z.number().positive(),
+  openingBalance: z.number().optional(), // can be negative (advance) or positive (already owed)
   faceDescriptors: z.array(z.array(z.number()).length(128)).optional(),
 })
 
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
         name: true,
         phone: true,
         monthlySalary: true,
+        openingBalance: true,
         joinedDate: true,
         active: true,
         faceDescriptors: true,
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    const { name, phone, pin, monthlySalary, faceDescriptors } = parsed.data
+    const { name, phone, pin, monthlySalary, openingBalance, faceDescriptors } = parsed.data
 
     const existing = await prisma.employee.findUnique({ where: { phone } })
     if (existing) {
@@ -84,9 +86,10 @@ export async function POST(request: NextRequest) {
         phone,
         pin,
         monthlySalary,
+        openingBalance: openingBalance ?? 0,
         faceDescriptors: faceDescriptors ?? [],
       },
-      select: { id: true, name: true, phone: true, monthlySalary: true, active: true, joinedDate: true },
+      select: { id: true, name: true, phone: true, monthlySalary: true, openingBalance: true, active: true, joinedDate: true },
     })
 
     return NextResponse.json({ success: true, data: employee }, { status: 201 })

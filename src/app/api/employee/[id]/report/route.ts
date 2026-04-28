@@ -8,7 +8,9 @@ export const dynamic = 'force-dynamic'
 
 type Ctx = { params: Promise<{ id: string }> }
 
-// GET /api/employee/[id]/payments — admin: payment list + running balance summary.
+// GET /api/employee/[id]/report — full report payload for client-side PDF generation.
+// Includes everything: employee meta, full attendance, full payments, by-month earnings,
+// and computed running balance. The UI then renders a PDF locally with jspdf.
 export async function GET(_request: NextRequest, context: Ctx) {
   try {
     const session = await getSession()
@@ -19,7 +21,15 @@ export async function GET(_request: NextRequest, context: Ctx) {
 
     const employee = await prisma.employee.findUnique({
       where: { id },
-      select: { id: true, monthlySalary: true, openingBalance: true },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        monthlySalary: true,
+        openingBalance: true,
+        joinedDate: true,
+        active: true,
+      },
     })
     if (!employee) {
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
@@ -28,7 +38,18 @@ export async function GET(_request: NextRequest, context: Ctx) {
     const [attendance, payments] = await Promise.all([
       prisma.attendanceRecord.findMany({
         where: { employeeId: id },
-        select: { date: true, status: true, approved: true },
+        orderBy: { date: 'desc' },
+        select: {
+          id: true,
+          date: true,
+          markedAt: true,
+          status: true,
+          source: true,
+          approved: true,
+          modified: true,
+          modifiedAt: true,
+          notes: true,
+        },
       }),
       prisma.salaryPayment.findMany({
         where: { employeeId: id },
@@ -46,16 +67,21 @@ export async function GET(_request: NextRequest, context: Ctx) {
     return NextResponse.json({
       success: true,
       data: {
-        openingBalance: balance.openingBalance,
-        totalEarned: balance.totalEarned,
-        totalPaid: balance.totalPaid,
-        balance: balance.balance,
-        byMonth: balance.byMonth,
+        employee,
+        summary: {
+          openingBalance: balance.openingBalance,
+          totalEarned: balance.totalEarned,
+          totalPaid: balance.totalPaid,
+          balance: balance.balance,
+          byMonth: balance.byMonth,
+        },
+        attendance,
         payments: paymentsAnnotated,
+        generatedAt: new Date(),
       },
     })
   } catch (error) {
-    console.error('admin payments GET error', error)
+    console.error('employee report error', error)
     return NextResponse.json({ success: false, error: 'Failed' }, { status: 500 })
   }
 }

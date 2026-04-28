@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS "Employee" (
   "phone"            TEXT NOT NULL UNIQUE,
   "pin"              TEXT NOT NULL,                 -- 4 digits, plaintext (per design)
   "monthlySalary"    DECIMAL(12,2) NOT NULL,
+  "openingBalance"   DECIMAL(12,2) NOT NULL DEFAULT 0,  -- migration carry-over: positive = owed to employee, negative = advance/overpaid
   "joinedDate"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "active"           BOOLEAN NOT NULL DEFAULT true,
   "faceDescriptors"  JSONB,                          -- array of 128-float arrays
@@ -35,6 +36,9 @@ CREATE TABLE IF NOT EXISTS "Employee" (
 );
 CREATE INDEX IF NOT EXISTS "Employee_phone_idx"  ON "Employee"("phone");
 CREATE INDEX IF NOT EXISTS "Employee_active_idx" ON "Employee"("active");
+
+-- Idempotent ALTER for DBs that ran an earlier version of this file before openingBalance existed.
+ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "openingBalance" DECIMAL(12,2) NOT NULL DEFAULT 0;
 
 -- ============================================
 -- AttendanceRecord

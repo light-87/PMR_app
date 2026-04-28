@@ -53,15 +53,20 @@ export function earningsByMonth(
 export type RunningBalance = {
   totalEarned: DecimalT
   totalPaid: DecimalT
+  openingBalance: DecimalT
   balance: DecimalT // positive = pending owed to employee, negative = overpaid
   byMonth: MonthlyEarnings[]
 }
 
+// `openingBalance` is the migration carry-over (positive = owed to employee at time of
+// onboarding, negative = advance already given). Defaults to 0 for new employees.
 export function runningBalance(
   attendance: Pick<AttendanceRecord, 'date' | 'status' | 'approved'>[],
   payments: Pick<SalaryPayment, 'amountPaid'>[],
-  monthlySalary: DecimalT | string | number
+  monthlySalary: DecimalT | string | number,
+  openingBalance: DecimalT | string | number = 0
 ): RunningBalance {
+  const opening = new Decimal(openingBalance as Prisma.Decimal.Value)
   const byMonth = earningsByMonth(attendance, monthlySalary)
   const totalEarned = byMonth.reduce((acc, m) => acc.add(m.earned), new Decimal(0))
   const totalPaid = payments.reduce(
@@ -71,7 +76,8 @@ export function runningBalance(
   return {
     totalEarned,
     totalPaid,
-    balance: totalEarned.sub(totalPaid),
+    openingBalance: opening,
+    balance: opening.add(totalEarned).sub(totalPaid),
     byMonth,
   }
 }

@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ProtectedLayout } from '@/components/Layout/ProtectedLayout'
 import { cn } from '@/lib/utils'
-import { Users, Camera, Clock, IndianRupee } from 'lucide-react'
+import { LayoutDashboard, Users, Camera, Clock, IndianRupee } from 'lucide-react'
 
 const subNav = [
+  { href: '/employee/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/employee', label: 'Employees', icon: Users, exact: true },
   { href: '/employee/kiosk', label: 'Kiosk', icon: Camera },
   { href: '/employee/pending', label: 'Pending', icon: Clock },

@@ -197,6 +197,7 @@ model Employee {
   phone            String   @unique
   pin              String   // 4-digit, plaintext
   monthlySalary    Decimal  @db.Decimal(12, 2)
+  openingBalance   Decimal  @default(0) @db.Decimal(12, 2) // migration: positive = owed, negative = advance
   joinedDate       DateTime @default(now())
   active           Boolean  @default(true)
   faceDescriptors  Json?    // array of 128-float arrays (per descriptor)

@@ -16,6 +16,7 @@ export default function NewEmployeePage() {
   const [phone, setPhone] = useState('')
   const [pin, setPin] = useState('')
   const [monthlySalary, setMonthlySalary] = useState('')
+  const [openingBalance, setOpeningBalance] = useState('')
   const [descriptors, setDescriptors] = useState<number[][]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -44,6 +45,7 @@ export default function NewEmployeePage() {
           phone,
           pin,
           monthlySalary: parseFloat(monthlySalary),
+          openingBalance: openingBalance.trim() ? parseFloat(openingBalance) : 0,
           faceDescriptors: descriptors.length > 0 ? descriptors : undefined,
         }),
       })
@@ -116,6 +118,22 @@ export default function NewEmployeePage() {
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="opening">Opening balance (₹) — for migration</Label>
+              <Input
+                id="opening"
+                inputMode="decimal"
+                value={openingBalance}
+                onChange={(e) => setOpeningBalance(e.target.value.replace(/[^0-9.\-]/g, ''))}
+                placeholder="0"
+              />
+              <p className="text-xs text-muted-foreground">
+                Carry-over from previous system. <strong>Positive</strong> = owed to employee
+                (already worked X days but not paid). <strong>Negative</strong> = advance already
+                given (employee was paid in advance and is &quot;in debt&quot;). Leave 0 for new hires.
+              </p>
             </div>
 
             {error && <p className="text-sm text-red-600">{error}</p>}

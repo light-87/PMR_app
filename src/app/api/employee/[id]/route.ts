@@ -10,6 +10,7 @@ const updateSchema = z.object({
   phone: z.string().regex(/^\d{7,15}$/).optional(),
   pin: z.string().regex(/^\d{4}$/).optional(),
   monthlySalary: z.number().positive().optional(),
+  openingBalance: z.number().optional(),
   active: z.boolean().optional(),
 })
 
@@ -31,6 +32,7 @@ export async function GET(_request: NextRequest, context: Ctx) {
         name: true,
         phone: true,
         monthlySalary: true,
+        openingBalance: true,
         joinedDate: true,
         active: true,
         faceDescriptors: true,
@@ -90,7 +92,7 @@ export async function PUT(request: NextRequest, context: Ctx) {
     const employee = await prisma.employee.update({
       where: { id },
       data: parsed.data,
-      select: { id: true, name: true, phone: true, monthlySalary: true, active: true },
+      select: { id: true, name: true, phone: true, monthlySalary: true, openingBalance: true, active: true },
     })
     return NextResponse.json({ success: true, data: employee })
   } catch (error) {
