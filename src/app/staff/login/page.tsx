@@ -40,7 +40,7 @@ export default function StaffLoginPage() {
       }
       setRole('EMPLOYEE')
       setEmployee(json.data.id)
-      router.push('/staff')
+      window.location.href = '/staff'
     } catch {
       setError('Something went wrong')
     } finally {
