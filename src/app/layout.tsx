@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
+import { Toaster } from "@/components/Toaster";
 
 export const metadata: Metadata = {
   title: "PMR Industries — Inventory, Expenses & Staff",
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className="antialiased">
         <RegisterServiceWorker />
         {children}
+        <Toaster />
       </body>
     </html>
   );

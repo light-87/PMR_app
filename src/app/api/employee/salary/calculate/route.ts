@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { calculateForMonth, runningBalance } from '@/lib/salary'
 import { parseMonthString, toMonthStringIST } from '@/lib/date-utils'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +35,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Employee not found' }, { status: 404 })
     }
 
-    const [attendance, payments] = await Promise.all([
+    const { start, end } = parseMonthString(month)
+
+    const [attendance, payments, monthPayments, lastPayment] = await Promise.all([
       prisma.attendanceRecord.findMany({
         where: { employeeId },
         select: { date: true, status: true, approved: true },
@@ -43,10 +46,23 @@ export async function GET(request: NextRequest) {
         where: { employeeId },
         select: { amountPaid: true },
       }),
+      prisma.salaryPayment.findMany({
+        where: { employeeId, periodStart: { gte: start, lt: end } },
+        select: { amountPaid: true },
+      }),
+      prisma.salaryPayment.findFirst({
+        where: { employeeId },
+        orderBy: { paidDate: 'desc' },
+        select: { amountPaid: true, type: true, paidDate: true },
+      }),
     ])
 
     const calc = calculateForMonth(attendance, employee.monthlySalary, month)
     const balance = runningBalance(attendance, payments, employee.monthlySalary, employee.openingBalance)
+    const paidThisMonth = monthPayments.reduce(
+      (acc, p) => acc.add(new Prisma.Decimal(p.amountPaid as Prisma.Decimal.Value)),
+      new Prisma.Decimal(0)
+    )
 
     return NextResponse.json({
       success: true,
@@ -57,6 +73,8 @@ export async function GET(request: NextRequest) {
         runningBalance: balance.balance,
         totalEarned: balance.totalEarned,
         totalPaid: balance.totalPaid,
+        paidThisMonth,
+        lastPayment,
       },
     })
   } catch (error) {
