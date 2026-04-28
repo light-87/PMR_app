@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, IndianRupee, ClipboardCheck, Calendar } from 'lucide-react'
+import { Loader2, IndianRupee, ClipboardCheck, Calendar, LogOut } from 'lucide-react'
 import { formatCurrency, cn } from '@/lib/utils'
 import { toMonthStringIST } from '@/lib/date-utils'
+import { useAuthStore } from '@/store/authStore'
 
 type SalaryResp = {
   employee: { id: string; name: string; monthlySalary: string }
@@ -20,6 +21,8 @@ export default function StaffDashboardPage() {
   const [data, setData] = useState<SalaryResp | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
+  const { clearAuth } = useAuthStore()
 
   useEffect(() => {
     void load()
@@ -38,6 +41,17 @@ export default function StaffDashboardPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      clearAuth()
+    } catch {
+      // proceed with redirect even if API fails
+    }
+    window.location.href = '/staff/login'
   }
 
   const thisMonth = useMemo(() => {
@@ -60,9 +74,25 @@ export default function StaffDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-xs text-muted-foreground">Welcome back</p>
-        <h1 className="text-xl font-bold">{data.employee.name}</h1>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs text-muted-foreground">Welcome back</p>
+          <h1 className="text-xl font-bold">{data.employee.name}</h1>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="text-muted-foreground hover:text-red-600 -mt-1"
+        >
+          {loggingOut ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="h-4 w-4" />
+          )}
+          <span className="ml-1.5 text-xs">Logout</span>
+        </Button>
       </div>
 
       <Card
