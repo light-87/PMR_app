@@ -6,7 +6,8 @@ const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'your-secret-key-here'
 )
 
-const publicRoutes = ['/login']
+// Public paths that never require a session.
+const publicRoutes = ['/login', '/staff/login', '/']
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
@@ -24,18 +25,40 @@ export async function middleware(request: NextRequest) {
   // Get session token
   const token = request.cookies.get('session')?.value
 
+  // Determine where to redirect on missing session — staff routes go to staff login.
+  const isStaffRoute = path.startsWith('/staff')
+  const loginUrl = new URL(isStaffRoute ? '/staff/login' : '/login', request.url)
+
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(loginUrl)
   }
 
   try {
-    // Verify session
     const { payload } = await jwtVerify(token, SECRET_KEY)
     const role = payload.role as string
 
-    // Admin-only routes
+    // /staff/* — EMPLOYEE only. Send mismatched roles to admin home.
+    if (isStaffRoute) {
+      if (role !== 'EMPLOYEE') {
+        return NextResponse.redirect(new URL('/inventory', request.url))
+      }
+      return NextResponse.next()
+    }
+
+    // /employee/* — ADMIN only.
+    if (path.startsWith('/employee')) {
+      if (role !== 'ADMIN') {
+        // Employees and others bounce to their respective home.
+        if (role === 'EMPLOYEE') return NextResponse.redirect(new URL('/staff', request.url))
+        return NextResponse.redirect(new URL('/inventory', request.url))
+      }
+      return NextResponse.next()
+    }
+
+    // Existing admin-only routes
     if (path.startsWith('/admin') || path.startsWith('/dashboard') || path.startsWith('/statements') || path.startsWith('/ai-lab')) {
       if (role !== 'ADMIN') {
+        if (role === 'EMPLOYEE') return NextResponse.redirect(new URL('/staff', request.url))
         return NextResponse.redirect(new URL('/inventory', request.url))
       }
     }
@@ -45,15 +68,22 @@ export async function middleware(request: NextRequest) {
       if (role === 'INVENTORY_ONLY') {
         return NextResponse.redirect(new URL('/inventory', request.url))
       }
+      if (role === 'EMPLOYEE') {
+        return NextResponse.redirect(new URL('/staff', request.url))
+      }
+    }
+
+    // Other authenticated admin pages — block employees so they don't wander.
+    if (role === 'EMPLOYEE') {
+      return NextResponse.redirect(new URL('/staff', request.url))
     }
 
     return NextResponse.next()
-  } catch (error) {
-    // Invalid token - redirect to login
-    return NextResponse.redirect(new URL('/login', request.url))
+  } catch {
+    return NextResponse.redirect(loginUrl)
   }
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|pmr-logo.png|manifest.json).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|pmr-logo.png|manifest.json|sw.js|models).*)'],
 }

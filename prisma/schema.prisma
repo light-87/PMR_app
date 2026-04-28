@@ -186,6 +186,91 @@ model SystemSettings {
 }
 
 // ============================================
+// PAGARBOOK MODULE (Employee + Attendance + Payroll)
+// Tables created via prisma/sql/pagarbook.sql in Supabase SQL editor.
+// Schema mirrored here so Prisma Client has types — do NOT run prisma migrate.
+// ============================================
+
+model Employee {
+  id               String   @id @default(cuid())
+  name             String
+  phone            String   @unique
+  pin              String   // 4-digit, plaintext
+  monthlySalary    Decimal  @db.Decimal(12, 2)
+  joinedDate       DateTime @default(now())
+  active           Boolean  @default(true)
+  faceDescriptors  Json?    // array of 128-float arrays (per descriptor)
+  pushSubscription Json?    // single subscription object, last-device-wins
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  attendance       AttendanceRecord[]
+  salaryPayments   SalaryPayment[]
+
+  @@index([phone])
+  @@index([active])
+}
+
+model AttendanceRecord {
+  id          String           @id @default(cuid())
+  employeeId  String
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime         // IST 00:00 UTC of that day
+  markedAt    DateTime         @default(now())
+  status      AttendanceStatus
+  source      AttendanceSource
+  approved    Boolean          @default(false)
+  approvedAt  DateTime?
+  modified    Boolean          @default(false)
+  modifiedAt  DateTime?
+  notes       String?
+  createdAt   DateTime         @default(now())
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([approved])
+}
+
+model SalaryPayment {
+  id               String              @id @default(cuid())
+  employeeId       String
+  employee         Employee            @relation(fields: [employeeId], references: [id])
+  type             SalaryPaymentType   @default(REGULAR)
+  periodStart      DateTime
+  periodEnd        DateTime
+  daysInMonth      Int
+  daysAttended     Int
+  monthlySalary    Decimal             @db.Decimal(12, 2) // snapshot
+  calculatedAmount Decimal             @db.Decimal(12, 2) // system-suggested
+  amountPaid       Decimal             @db.Decimal(12, 2) // admin-typed (can be negative)
+  paidDate         DateTime            @default(now())
+  account          ExpenseAccount      @default(CASH)
+  expenseId        String?
+  notes            String?
+  createdAt        DateTime            @default(now())
+
+  @@index([paidDate])
+  @@index([employeeId])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+enum AttendanceSource {
+  FACE_SCAN
+  ADMIN_MANUAL
+  EMPLOYEE_SELF
+}
+
+enum SalaryPaymentType {
+  REGULAR
+  ADVANCE
+  ADJUSTMENT
+}
+
+// ============================================
 // LEADS MODULE
 // ============================================
 
