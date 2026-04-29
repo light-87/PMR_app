@@ -1,6 +1,6 @@
 'use client'
 
-import { IndianRupee, CheckCircle2, Hourglass } from 'lucide-react'
+import { IndianRupee, CheckCircle2, Hourglass, CalendarDays } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn, formatINR } from '@/lib/utils'
 
@@ -11,6 +11,8 @@ interface KpiStripProps {
   paid: number
   pendingCount: number
   totalCount: number
+  weekOwed: number
+  overdueCount: number
   active: KpiFilter
   onFilter: (f: KpiFilter) => void
 }
@@ -20,12 +22,15 @@ export function KpiStrip({
   paid,
   pendingCount,
   totalCount,
+  weekOwed,
+  overdueCount,
   active,
   onFilter,
 }: KpiStripProps) {
   const paidPct = payable > 0 ? Math.min(100, Math.round((paid / payable) * 100)) : 0
 
-  const tiles: Array<{
+  // Filterable tiles (clickable). The "This week" tile below is informational only.
+  const filterTiles: Array<{
     key: KpiFilter
     label: string
     value: string
@@ -64,8 +69,8 @@ export function KpiStrip({
   ]
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-      {tiles.map((t) => {
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+      {filterTiles.map((t) => {
         const isActive = active === t.key
         return (
           <Card
@@ -97,6 +102,26 @@ export function KpiStrip({
           </Card>
         )
       })}
+
+      {/* Informational: weekly run-rate tile (not a filter). */}
+      <Card
+        className={cn(
+          'relative p-3 sm:p-4 min-h-[88px] overflow-hidden',
+          'ring-1 ring-transparent'
+        )}
+      >
+        <div className="absolute inset-x-0 top-0 h-1 bg-violet-500" />
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CalendarDays className="h-4 w-4 text-violet-600" />
+          <span className="font-medium">Owed this week</span>
+        </div>
+        <div className="mt-1.5 text-base sm:text-xl font-bold tabular-nums text-violet-700">
+          {formatINR(weekOwed)}
+        </div>
+        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+          {overdueCount > 0 ? `${overdueCount} overdue` : 'since last pay'}
+        </div>
+      </Card>
     </div>
   )
 }

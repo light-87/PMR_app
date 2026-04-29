@@ -261,33 +261,42 @@ export default function EmployeeDashboardPage() {
                       {i + 1}
                     </th>
                   ))}
+                  <th className="sticky right-0 bg-background pl-3 pr-1 font-normal text-muted-foreground text-right z-10">
+                    Present
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {data.heatmap.rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="sticky left-0 bg-background pr-2 py-1 z-10">
-                      <Link
-                        href={`/employee/${row.id}`}
-                        className="hover:underline whitespace-nowrap"
-                      >
-                        {row.name}
-                      </Link>
-                    </td>
-                    {row.days.map((v, i) => (
-                      <td key={i} className="p-0.5">
-                        <div
-                          className={cn(
-                            'w-4 h-4 rounded-sm relative',
-                            heatColor(v),
-                            v & 8 ? 'ring-1 ring-purple-500' : ''
-                          )}
-                          title={heatTitle(v, i + 1)}
-                        />
+                {data.heatmap.rows.map((row) => {
+                  const presentCount = row.days.reduce((n, v) => n + ((v & 7) === 2 ? 1 : 0), 0)
+                  return (
+                    <tr key={row.id}>
+                      <td className="sticky left-0 bg-background pr-2 py-1 z-10">
+                        <Link
+                          href={`/employee/${row.id}`}
+                          className="hover:underline whitespace-nowrap"
+                        >
+                          {row.name}
+                        </Link>
                       </td>
-                    ))}
-                  </tr>
-                ))}
+                      {row.days.map((v, i) => (
+                        <td key={i} className="p-0.5">
+                          <div
+                            className={cn(
+                              'w-4 h-4 rounded-sm relative',
+                              heatColor(v),
+                              v & 8 ? 'ring-1 ring-purple-500' : ''
+                            )}
+                            title={heatTitle(v, i + 1)}
+                          />
+                        </td>
+                      ))}
+                      <td className="sticky right-0 bg-background pl-3 pr-1 text-right tabular-nums font-semibold z-10">
+                        {presentCount}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -339,7 +348,7 @@ export default function EmployeeDashboardPage() {
                       className={cn(
                         'text-right py-2 pl-2 tabular-nums font-medium',
                         balance > 0 && 'text-amber-700',
-                        balance < 0 && 'text-blue-700'
+                        balance < 0 && 'text-emerald-700'
                       )}
                     >
                       {balance < 0 ? '-' : ''}₹{formatCurrency(Math.abs(balance))}

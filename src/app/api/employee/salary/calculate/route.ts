@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
-import { calculateForMonth, runningBalance } from '@/lib/salary'
-import { parseMonthString, toMonthStringIST } from '@/lib/date-utils'
+import { calculateForMonth, earningsByMonth, runningBalance } from '@/lib/salary'
+import { dateOnlyIST, parseMonthString, toMonthStringIST } from '@/lib/date-utils'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
-      select: { id: true, name: true, monthlySalary: true, openingBalance: true, active: true },
+      select: { id: true, name: true, monthlySalary: true, openingBalance: true, joinedDate: true, active: true },
     })
     if (!employee) {
       return NextResponse.json({ success: false, error: 'Employee not found' }, { status: 404 })
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     const { start, end } = parseMonthString(month)
 
-    const [attendance, payments, monthPayments, lastPayment] = await Promise.all([
+    const [attendance, payments, monthPayments, lastPayment, lastEarningPayment] = await Promise.all([
       prisma.attendanceRecord.findMany({
         where: { employeeId },
         select: { date: true, status: true, approved: true },
@@ -55,6 +55,13 @@ export async function GET(request: NextRequest) {
         orderBy: { paidDate: 'desc' },
         select: { amountPaid: true, type: true, paidDate: true },
       }),
+      // Anchor for "since last paid" earnings — REGULAR or ADJUSTMENT only.
+      // ADVANCE doesn't reset the work-done clock; it's money up front.
+      prisma.salaryPayment.findFirst({
+        where: { employeeId, type: { in: ['REGULAR', 'ADJUSTMENT'] } },
+        orderBy: { paidDate: 'desc' },
+        select: { paidDate: true },
+      }),
     ])
 
     const calc = calculateForMonth(attendance, employee.monthlySalary, month)
@@ -62,6 +69,30 @@ export async function GET(request: NextRequest) {
     const paidThisMonth = monthPayments.reduce(
       (acc, p) => acc.add(new Prisma.Decimal(p.amountPaid as Prisma.Decimal.Value)),
       new Prisma.Decimal(0)
+    )
+
+    // "Since last paid" — earnings + days worked between the anchor (exclusive) and today (inclusive).
+    // Anchor = last REGULAR/ADJUSTMENT payment date, or joinedDate for new employees.
+    // Earnings sum across months so it stays correct across month boundaries.
+    const anchorDate = lastEarningPayment?.paidDate ?? employee.joinedDate
+    const anchorDayIST = dateOnlyIST(anchorDate)
+    const todayIST = dateOnlyIST(new Date())
+    const sinceAttendance = attendance.filter((r) => {
+      const d = dateOnlyIST(r.date)
+      return d > anchorDayIST && d <= todayIST
+    })
+    const sinceEarnings = earningsByMonth(sinceAttendance, employee.monthlySalary)
+    const sinceEarned = sinceEarnings.reduce(
+      (acc, m) => acc.add(m.earned),
+      new Prisma.Decimal(0)
+    )
+    const daysWorkedSince = sinceAttendance.reduce(
+      (n, r) => n + (r.approved && r.status === 'PRESENT' ? 1 : 0),
+      0
+    )
+    const daysSinceAnchor = Math.max(
+      0,
+      Math.round((todayIST.getTime() - anchorDayIST.getTime()) / 86400000)
     )
 
     return NextResponse.json({
@@ -75,6 +106,13 @@ export async function GET(request: NextRequest) {
         totalPaid: balance.totalPaid,
         paidThisMonth,
         lastPayment,
+        sincePaid: {
+          anchorDate: anchorDayIST.toISOString(),
+          anchorIsJoined: !lastEarningPayment,
+          daysSinceAnchor,
+          daysWorked: daysWorkedSince,
+          earned: sinceEarned,
+        },
       },
     })
   } catch (error) {

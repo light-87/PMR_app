@@ -4,14 +4,15 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ChevronLeft, ChevronRight, Loader2, PartyPopper } from 'lucide-react'
-import { formatINR, paymentStatus, type PaymentStatus } from '@/lib/utils'
+import { CheckSquare, ChevronLeft, ChevronRight, Loader2, PartyPopper } from 'lucide-react'
+import { cn, formatINR, paymentStatus, type PaymentStatus } from '@/lib/utils'
 import { toMonthStringIST } from '@/lib/date-utils'
 import { KpiStrip, type KpiFilter } from '@/components/payroll/KpiStrip'
 import { FilterBar, type StatusFilter, type SortKey } from '@/components/payroll/FilterBar'
 import {
   EmployeePayrollCard,
   type EmployeePayrollRow,
+  type BulkPaymentType,
 } from '@/components/payroll/EmployeePayrollCard'
 import {
   PaySheet,
@@ -19,6 +20,13 @@ import {
   type PaymentType,
   type PaySuccessResult,
 } from '@/components/payroll/PaySheet'
+import { BulkPayBar } from '@/components/payroll/BulkPayBar'
+import {
+  BulkConfirmSheet,
+  type BulkAccount,
+  type BulkConfirmItem,
+  type BulkConfirmResult,
+} from '@/components/payroll/BulkConfirmSheet'
 import { toast } from '@/store/toastStore'
 
 type EmployeeApiRow = {
@@ -37,6 +45,13 @@ type CalcApiRow = {
   runningBalance: string
   paidThisMonth: string
   lastPayment: { amount: string; type: string; paidDate: string } | null
+  sincePaid: {
+    anchorDate: string
+    anchorIsJoined: boolean
+    daysSinceAnchor: number
+    daysWorked: number
+    earned: string
+  }
 }
 
 const MONTH_NAMES = [
@@ -72,6 +87,12 @@ export default function PayrollPage() {
   // Pay sheet
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetCtx, setSheetCtx] = useState<PaySheetContext | null>(null)
+
+  // Bulk-select mode
+  const [selectMode, setSelectMode] = useState(false)
+  const [bulkSel, setBulkSel] = useState<Record<string, { amount: string; type: BulkPaymentType }>>({})
+  const [bulkAccount, setBulkAccount] = useState<BulkAccount>('CASH')
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
 
   useEffect(() => {
     void loadAll()
@@ -140,6 +161,7 @@ export default function PayrollPage() {
           runningBalance: 0,
           status: 'PENDING' as PaymentStatus,
           lastPayment: null,
+          sincePaid: null,
         }
       }
       const calcAmt = Number(c.calculatedAmount)
@@ -162,6 +184,15 @@ export default function PayrollPage() {
               amount: Number(c.lastPayment.amount),
               type: c.lastPayment.type,
               paidDate: c.lastPayment.paidDate,
+            }
+          : null,
+        sincePaid: c.sincePaid
+          ? {
+              anchorDate: c.sincePaid.anchorDate,
+              anchorIsJoined: c.sincePaid.anchorIsJoined,
+              daysSinceAnchor: c.sincePaid.daysSinceAnchor,
+              daysWorked: c.sincePaid.daysWorked,
+              earned: Number(c.sincePaid.earned),
             }
           : null,
         pushStatus: pushById[e.id] ?? null,
@@ -203,16 +234,107 @@ export default function PayrollPage() {
     let payable = 0
     let paid = 0
     let pendingCount = 0
+    let weekOwed = 0
+    let overdueCount = 0
     for (const r of rows) {
       payable += r.calculatedAmount
       paid += r.paidThisMonth
       if (r.status === 'PENDING' || r.status === 'PARTIAL') pendingCount++
+      if (r.sincePaid) {
+        weekOwed += r.sincePaid.earned
+        if (r.sincePaid.daysSinceAnchor > 7) overdueCount++
+      }
     }
-    return { payable, paid, pendingCount, totalCount: rows.length }
+    return { payable, paid, pendingCount, totalCount: rows.length, weekOwed, overdueCount }
   }, [rows])
 
   const allDone =
     rows.length > 0 && rows.every((r) => r.status === 'PAID' || r.status === 'OVERPAID')
+
+  // Bulk-select helpers
+  function exitSelectMode() {
+    setSelectMode(false)
+    setBulkSel({})
+  }
+
+  function toggleBulkSelect(row: EmployeePayrollRow) {
+    setBulkSel((prev) => {
+      if (prev[row.id]) {
+        const { [row.id]: _, ...rest } = prev
+        return rest
+      }
+      // Default amount: prefer "since last paid" earnings (matches the weekly cycle).
+      // Fall back to month's owed, then month's earned.
+      const sincePay = row.sincePaid?.earned ?? 0
+      const owed = Math.max(row.calculatedAmount - row.paidThisMonth, 0)
+      const initial = sincePay > 0.5 ? sincePay : owed > 0 ? owed : row.calculatedAmount
+      return {
+        ...prev,
+        [row.id]: { amount: initial.toFixed(2), type: 'REGULAR' },
+      }
+    })
+  }
+
+  function setBulkAmount(employeeId: string, amount: string) {
+    setBulkSel((prev) => (prev[employeeId] ? { ...prev, [employeeId]: { ...prev[employeeId], amount } } : prev))
+  }
+
+  function setBulkType(employeeId: string, type: BulkPaymentType) {
+    setBulkSel((prev) => (prev[employeeId] ? { ...prev, [employeeId]: { ...prev[employeeId], type } } : prev))
+  }
+
+  // Build bulk totals + invalid count for the action bar.
+  const bulkSummary = useMemo(() => {
+    let total = 0
+    let invalid = 0
+    for (const [id, sel] of Object.entries(bulkSel)) {
+      const n = parseFloat(sel.amount)
+      if (Number.isNaN(n) || (sel.type !== 'ADJUSTMENT' && n <= 0)) {
+        invalid++
+        continue
+      }
+      total += n
+    }
+    return { count: Object.keys(bulkSel).length, total, invalid }
+  }, [bulkSel])
+
+  // Build the items list for the confirmation sheet.
+  const bulkItems: BulkConfirmItem[] = useMemo(() => {
+    const out: BulkConfirmItem[] = []
+    for (const [employeeId, sel] of Object.entries(bulkSel)) {
+      const emp = rows.find((r) => r.id === employeeId)
+      if (!emp) continue
+      const amount = parseFloat(sel.amount)
+      if (Number.isNaN(amount)) continue
+      if (sel.type !== 'ADJUSTMENT' && amount <= 0) continue
+      out.push({
+        employeeId,
+        employeeName: emp.name,
+        amount,
+        type: sel.type,
+      })
+    }
+    return out
+  }, [bulkSel, rows])
+
+  async function handleBulkSuccess(result: BulkConfirmResult) {
+    // Refresh all paid rows + flash success.
+    const ids = result.results.map((r) => r.employeeId)
+    await Promise.all(ids.map(refreshOne))
+    setFlashId(ids[0] ?? null)
+    setTimeout(() => setFlashId(null), 1500)
+    // Bubble per-employee push status into the existing UI markers.
+    setPushById((prev) => {
+      const next = { ...prev }
+      for (const r of result.results) next[r.employeeId] = r.pushStatus
+      return next
+    })
+    const sentCount = result.results.filter((r) => r.pushStatus === 'sent').length
+    toast.success(`Paid ${formatINR(result.totalPaid)} to ${result.count} employees`, {
+      description: sentCount > 0 ? `🔔 ${sentCount} notified` : 'No push subscriptions',
+    })
+    exitSelectMode()
+  }
 
   function openSheet(row: EmployeePayrollRow, mode: 'FULL' | 'CUSTOM' | 'ADJUST') {
     const owed = Math.max(row.calculatedAmount - row.paidThisMonth, 0)
@@ -256,35 +378,49 @@ export default function PayrollPage() {
   }
 
   return (
-    <div className="space-y-4 pb-8">
+    <div className={cn('space-y-4', selectMode && bulkSummary.count > 0 ? 'pb-32' : 'pb-8')}>
       {/* Header — sticky-able month switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Payroll</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Pay salaries & track balances</p>
         </div>
-        <div className="flex items-center gap-1 self-start sm:self-auto rounded-lg border bg-card p-1">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setMonth(shiftMonth(month, -1))}
-            aria-label="Previous month"
-            className="h-9 w-9"
+            size="sm"
+            variant={selectMode ? 'default' : 'outline'}
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            className="h-10"
+            disabled={loading || employees.length === 0}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <CheckSquare className="h-4 w-4 mr-1.5" />
+            {selectMode ? 'Cancel' : 'Select'}
           </Button>
-          <div className="font-semibold text-sm w-32 text-center tabular-nums">
-            {monthLabel(month)}
+          <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setMonth(shiftMonth(month, -1))}
+              aria-label="Previous month"
+              className="h-9 w-9"
+              disabled={selectMode}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="font-semibold text-sm w-32 text-center tabular-nums">
+              {monthLabel(month)}
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setMonth(shiftMonth(month, 1))}
+              aria-label="Next month"
+              className="h-9 w-9"
+              disabled={selectMode}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setMonth(shiftMonth(month, 1))}
-            aria-label="Next month"
-            className="h-9 w-9"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
@@ -301,6 +437,8 @@ export default function PayrollPage() {
           paid={kpis.paid}
           pendingCount={kpis.pendingCount}
           totalCount={kpis.totalCount}
+          weekOwed={kpis.weekOwed}
+          overdueCount={kpis.overdueCount}
           active={kpiFilter}
           onFilter={handleKpiFilter}
         />
@@ -369,15 +507,25 @@ export default function PayrollPage() {
                 No employees match the current filter.
               </Card>
             ) : (
-              filteredRows.map((row) => (
-                <EmployeePayrollCard
-                  key={row.id}
-                  row={row}
-                  onPayFull={(r) => openSheet(r, 'FULL')}
-                  onPayCustom={(r) => openSheet(r, 'CUSTOM')}
-                  onPayAdjust={(r) => openSheet(r, 'ADJUST')}
-                />
-              ))
+              filteredRows.map((row) => {
+                const sel = bulkSel[row.id]
+                return (
+                  <EmployeePayrollCard
+                    key={row.id}
+                    row={row}
+                    onPayFull={(r) => openSheet(r, 'FULL')}
+                    onPayCustom={(r) => openSheet(r, 'CUSTOM')}
+                    onPayAdjust={(r) => openSheet(r, 'ADJUST')}
+                    selectMode={selectMode}
+                    selected={!!sel}
+                    selectedAmount={sel?.amount ?? ''}
+                    selectedType={sel?.type ?? 'REGULAR'}
+                    onToggleSelect={toggleBulkSelect}
+                    onAmountChange={setBulkAmount}
+                    onTypeChange={setBulkType}
+                  />
+                )
+              })
             )}
           </div>
         </>
@@ -388,6 +536,27 @@ export default function PayrollPage() {
         ctx={sheetCtx}
         onOpenChange={setSheetOpen}
         onSuccess={handlePaySuccess}
+      />
+
+      {selectMode && bulkSummary.count > 0 && (
+        <BulkPayBar
+          count={bulkSummary.count}
+          total={bulkSummary.total}
+          invalidCount={bulkSummary.invalid}
+          onClear={exitSelectMode}
+          onReview={() => setBulkConfirmOpen(true)}
+        />
+      )}
+
+      <BulkConfirmSheet
+        open={bulkConfirmOpen}
+        month={month}
+        monthLabel={monthLabel(month)}
+        items={bulkItems}
+        account={bulkAccount}
+        onAccountChange={setBulkAccount}
+        onOpenChange={setBulkConfirmOpen}
+        onSuccess={handleBulkSuccess}
       />
     </div>
   )
