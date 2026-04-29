@@ -195,7 +195,7 @@ export default function KioskPage() {
         )}
       </div>
 
-      <div className="rounded-lg overflow-hidden bg-black aspect-video relative">
+      <div className="rounded-lg overflow-hidden bg-black relative aspect-[3/4] sm:aspect-video min-h-[60vh] sm:min-h-[70vh]">
         <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
