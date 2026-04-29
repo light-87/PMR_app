@@ -1,6 +1,8 @@
 // Service worker — push handler only.
 // Phase 0 scope: receive push events and show a notification. Phase 3 will extend
 // with the click-to-open behaviour for the staff PWA.
+// Bump SW_VERSION whenever assets change so installed clients refetch (e.g. logo update).
+const SW_VERSION = '2026-04-29-logo'
 
 self.addEventListener('install', (event) => {
   // Activate immediately on first install so we don't have to reload.
@@ -23,8 +25,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/logo.png',
-    badge: '/logo.png',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     tag: data.tag,
     data: { url: data.url },
   }
