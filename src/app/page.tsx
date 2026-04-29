@@ -17,9 +17,11 @@ export default async function Home() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
         <div className="text-center mb-2">
-          <div className="mx-auto mb-3 h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <span className="text-2xl font-bold text-primary">PMR</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="PMR Industries"
+            className="mx-auto mb-3 h-20 w-auto object-contain"
+          />
           <h1 className="text-2xl font-bold">PMR Industries</h1>
           <p className="text-sm text-muted-foreground mt-1">Choose how you want to log in</p>
         </div>

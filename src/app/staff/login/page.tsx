@@ -59,9 +59,11 @@ export default function StaffLoginPage() {
         </Link>
         <Card>
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary">PMR</span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="PMR Industries"
+              className="mx-auto mb-3 h-20 w-auto object-contain"
+            />
             <CardTitle className="text-2xl">Employee Login</CardTitle>
             <p className="text-sm text-muted-foreground mt-2">
               Enter your phone number and 4-digit PIN

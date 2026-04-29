@@ -55,13 +55,12 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <Link href="/inventory" className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
-              <span className="text-xs font-bold text-primary">PMR</span>
-            </div>
-            <span className="hidden font-semibold sm:inline-block">
-              PMR Industries
-            </span>
+          <Link href="/inventory" className="flex items-center" aria-label="PMR Industries home">
+            <img
+              src="/logo.png"
+              alt="PMR Industries"
+              className="h-9 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
