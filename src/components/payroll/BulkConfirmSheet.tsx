@@ -4,6 +4,7 @@ import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X, Loader2, IndianRupee, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -76,15 +77,44 @@ export function BulkConfirmSheet({
 }: Props) {
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState('')
+  const [overallNote, setOverallNote] = React.useState('')
+  const [itemNotes, setItemNotes] = React.useState<Record<string, string>>({})
 
   React.useEffect(() => {
-    if (open) setError('')
+    if (open) {
+      setError('')
+      setOverallNote('')
+      setItemNotes({})
+    }
   }, [open])
 
   const total = items.reduce((s, it) => s + it.amount, 0)
 
   async function submit() {
     if (items.length === 0 || submitting) return
+
+    const overall = overallNote.trim()
+    const builtItems = items.map((i) => {
+      const indiv = (itemNotes[i.employeeId] ?? '').trim()
+      const notes =
+        overall && indiv ? `${overall} — ${indiv}` : overall || indiv || undefined
+      return {
+        employeeId: i.employeeId,
+        employeeName: i.employeeName,
+        amount: i.amount,
+        type: i.type,
+        notes,
+      }
+    })
+
+    const tooLong = builtItems.find((b) => b.notes && b.notes.length > 500)
+    if (tooLong) {
+      setError(
+        `Note for ${tooLong.employeeName} is too long (max 500 chars after combining the overall note)`
+      )
+      return
+    }
+
     setSubmitting(true)
     setError('')
     try {
@@ -94,10 +124,11 @@ export function BulkConfirmSheet({
         body: JSON.stringify({
           month,
           account,
-          items: items.map((i) => ({
-            employeeId: i.employeeId,
-            amount: i.amount,
-            type: i.type,
+          items: builtItems.map((b) => ({
+            employeeId: b.employeeId,
+            amount: b.amount,
+            type: b.type,
+            notes: b.notes,
           })),
         }),
       })
@@ -183,6 +214,22 @@ export function BulkConfirmSheet({
               </Select>
             </div>
 
+            {/* Overall note */}
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Overall note (applies to all)
+              </label>
+              <Textarea
+                value={overallNote}
+                onChange={(e) => setOverallNote(e.target.value)}
+                placeholder="e.g. Diwali bonus batch, October settlements"
+                className="mt-1.5 resize-none"
+                rows={2}
+                maxLength={500}
+                disabled={submitting}
+              />
+            </div>
+
             {/* Items table */}
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -190,21 +237,34 @@ export function BulkConfirmSheet({
               </label>
               <div className="mt-1.5 rounded-lg border divide-y">
                 {items.map((it) => (
-                  <div key={it.employeeId} className="px-3 py-2.5 flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{it.employeeName}</div>
-                      <span
-                        className={cn(
-                          'inline-block mt-0.5 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded',
-                          TYPE_BADGE[it.type]
-                        )}
-                      >
-                        {it.type}
-                      </span>
+                  <div key={it.employeeId} className="px-3 py-2.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{it.employeeName}</div>
+                        <span
+                          className={cn(
+                            'inline-block mt-0.5 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded',
+                            TYPE_BADGE[it.type]
+                          )}
+                        >
+                          {it.type}
+                        </span>
+                      </div>
+                      <div className="font-semibold tabular-nums shrink-0">
+                        {formatINR(it.amount)}
+                      </div>
                     </div>
-                    <div className="font-semibold tabular-nums shrink-0">
-                      {formatINR(it.amount)}
-                    </div>
+                    <Textarea
+                      value={itemNotes[it.employeeId] ?? ''}
+                      onChange={(e) =>
+                        setItemNotes((prev) => ({ ...prev, [it.employeeId]: e.target.value }))
+                      }
+                      placeholder={`Note for ${it.employeeName} (optional)`}
+                      className="resize-none text-sm"
+                      rows={1}
+                      maxLength={500}
+                      disabled={submitting}
+                    />
                   </div>
                 ))}
                 <div className="px-3 py-2.5 flex items-center justify-between gap-2 bg-slate-50">
