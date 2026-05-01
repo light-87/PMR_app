@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, Beaker, Package2, Box } from 'lucide-react'
+import { Package, Package2, Box } from 'lucide-react'
 import type { StockSummary } from '@/types'
-import { UREA_PER_BATCH_KG, KG_PER_BAG } from '@/types'
+import { UREA_PER_BATCH_KG } from '@/types'
 
 interface StockOverviewCardProps {
   summary: StockSummary | null
@@ -32,8 +32,13 @@ export function StockOverviewCard({ summary }: StockOverviewCardProps) {
                 <div className="text-2xl font-bold text-amber-900">
                   {summary.ureaKg.toFixed(1)} kg
                 </div>
-                <div className="text-sm text-amber-600">
-                  ≈ {summary.ureaBags.toFixed(1)} bags ({KG_PER_BAG}kg each)
+                <div className="grid grid-cols-2 gap-2 text-sm text-amber-700 pt-1">
+                  <div className="bg-amber-100 rounded px-2 py-1">
+                    <span className="font-semibold">{summary.ureaBags45}</span> × 45kg
+                  </div>
+                  <div className="bg-amber-100 rounded px-2 py-1">
+                    <span className="font-semibold">{summary.ureaBags50}</span> × 50kg
+                  </div>
                 </div>
               </div>
             </div>

@@ -230,6 +230,8 @@ export type StockCategory = 'UREA' | 'FREE_DEF' | 'FINISHED_GOODS'
 
 export type StockUnit = 'KG' | 'LITERS' | 'BAGS'
 
+export type BagSize = 'KG_45' | 'KG_50'
+
 export interface StockTransaction {
   id: string
   date: string
@@ -237,6 +239,7 @@ export interface StockTransaction {
   category: StockCategory
   quantity: number
   unit: StockUnit
+  bagSize?: BagSize | null
   description?: string
   runningTotal: number
   createdAt: string
@@ -245,7 +248,8 @@ export interface StockTransaction {
 
 export interface StockSummary {
   ureaKg: number
-  ureaBags: number
+  ureaBags45: number
+  ureaBags50: number
   ureaCansProduceL: number
   freeDEF: number
   bucketsInLiters: number
@@ -263,14 +267,23 @@ export interface StockInput {
   category: StockCategory
   quantity: number
   unit: StockUnit
+  bagSize?: BagSize
   description?: string
 }
 
 // Stock constants
 export const UREA_PER_BATCH_KG = 360
-export const UREA_BAGS_PER_BATCH = 8
-export const KG_PER_BAG = 45
 export const LITERS_PER_BATCH = 1000
+
+export const KG_PER_BAG: Record<BagSize, number> = {
+  KG_45: 45,
+  KG_50: 50,
+}
+
+export const BAG_SIZE_LABELS: Record<BagSize, string> = {
+  KG_45: '45 kg',
+  KG_50: '50 kg',
+}
 
 export const STOCK_TYPE_LABELS: Record<StockTransactionType, string> = {
   ADD_UREA: 'Add Urea',

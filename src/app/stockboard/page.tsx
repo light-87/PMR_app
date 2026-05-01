@@ -129,7 +129,11 @@ export default function StockBoardPage() {
           <AddUreaForm onClose={handleFormClose} />
         )}
         {showProduceForm && (
-          <ProduceBatchForm onClose={handleFormClose} currentUreaStock={summary?.ureaKg || 0} />
+          <ProduceBatchForm
+            onClose={handleFormClose}
+            currentBags45={summary?.ureaBags45 || 0}
+            currentBags50={summary?.ureaBags50 || 0}
+          />
         )}
       </div>
     </ProtectedLayout>

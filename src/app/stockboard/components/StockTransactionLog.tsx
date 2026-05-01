@@ -45,24 +45,24 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
     }
   }
 
-  // Group production batch transactions
+  // Group production batch transactions (each produce action emits 1 FREE_DEF row +
+  // 1 or 2 UREA rows depending on which bag sizes were used)
   const groupedTransactions: Array<StockTransaction | StockTransaction[]> = []
   let i = 0
   while (i < filteredTransactions.length) {
     const current = filteredTransactions[i]
 
-    // Check if this is a production batch
     if (current.type === 'PRODUCE_BATCH') {
-      // Find related transactions (same date and type)
       const batchGroup = [current]
       let j = i + 1
 
-      // Look ahead for the next 2 transactions (should be same date and PRODUCE_BATCH)
-      while (j < filteredTransactions.length && j < i + 3) {
+      while (j < filteredTransactions.length && j < i + 4) {
         const next = filteredTransactions[j]
-        if (next.type === 'PRODUCE_BATCH' &&
-            new Date(next.date).getTime() === new Date(current.date).getTime() &&
-            new Date(next.createdAt).getTime() - new Date(current.createdAt).getTime() < 1000) {
+        if (
+          next.type === 'PRODUCE_BATCH' &&
+          new Date(next.date).getTime() === new Date(current.date).getTime() &&
+          Math.abs(new Date(next.createdAt).getTime() - new Date(current.createdAt).getTime()) < 2000
+        ) {
           batchGroup.push(next)
           j++
         } else {
@@ -70,8 +70,7 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
         }
       }
 
-      // If we found a group of 3 (UREA, FREE_DEF, FINISHED_GOODS), group them
-      if (batchGroup.length === 3) {
+      if (batchGroup.length >= 2) {
         groupedTransactions.push(batchGroup)
         i = j
       } else {
@@ -99,9 +98,11 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
             {groupedTransactions.map((item, idx) => {
               // Production batch group
               if (Array.isArray(item)) {
-                const ureaTransaction = item.find(t => t.category === 'UREA')
+                const ureaRows = item.filter(t => t.category === 'UREA')
+                const ureaUsed45 = ureaRows.filter(t => t.bagSize === 'KG_45').reduce((s, t) => s + Math.abs(t.quantity), 0)
+                const ureaUsed50 = ureaRows.filter(t => t.bagSize === 'KG_50').reduce((s, t) => s + Math.abs(t.quantity), 0)
+                const ureaUsedTotal = ureaRows.reduce((s, t) => s + Math.abs(t.quantity), 0)
                 const freeDEFTransaction = item.find(t => t.category === 'FREE_DEF')
-                const finishedGoodsTransaction = item.find(t => t.category === 'FINISHED_GOODS')
 
                 return (
                   <div
@@ -118,11 +119,16 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
                           {format(new Date(item[0].date), 'MMM dd, yyyy')}
                         </p>
                         <div className="mt-3 space-y-2 text-sm">
-                          {ureaTransaction && (
+                          {ureaUsedTotal > 0 && (
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Urea Used:</span>
                               <span className="font-semibold text-red-600">
-                                {ureaTransaction.quantity.toFixed(1)} {ureaTransaction.unit}
+                                {ureaUsedTotal.toFixed(1)} kg
+                                {(ureaUsed45 > 0 || ureaUsed50 > 0) && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    ({Math.round(ureaUsed45 / 45)} × 45kg + {Math.round(ureaUsed50 / 50)} × 50kg)
+                                  </span>
+                                )}
                               </span>
                             </div>
                           )}
@@ -134,18 +140,10 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
                               </span>
                             </div>
                           )}
-                          {finishedGoodsTransaction && (
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Finished Goods:</span>
-                              <span className="font-semibold text-green-600">
-                                +{finishedGoodsTransaction.quantity.toFixed(1)} {finishedGoodsTransaction.unit}
-                              </span>
-                            </div>
-                          )}
                         </div>
-                        {ureaTransaction?.description && (
+                        {ureaRows[0]?.description && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            {ureaTransaction.description}
+                            {ureaRows[0].description}
                           </p>
                         )}
                       </div>

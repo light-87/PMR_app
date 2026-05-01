@@ -17,13 +17,17 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { KG_PER_BAG } from '@/types'
 import { AlertCircle } from 'lucide-react'
 
-const formSchema = z.object({
-  date: z.string().min(1, 'Date is required'),
-  quantityKg: z.number()
-    .positive('Quantity must be positive')
-    .max(50000, 'Quantity exceeds typical range (max 50,000 kg). Please verify!'),
-  description: z.string().optional(),
-})
+const formSchema = z
+  .object({
+    date: z.string().min(1, 'Date is required'),
+    bags45: z.number().int().min(0, 'Must be 0 or more').max(2000, 'Too many'),
+    bags50: z.number().int().min(0, 'Must be 0 or more').max(2000, 'Too many'),
+    description: z.string().optional(),
+  })
+  .refine((data) => data.bags45 + data.bags50 > 0, {
+    message: 'Enter at least one 45kg or 50kg bag',
+    path: ['bags45'],
+  })
 
 type FormData = z.infer<typeof formSchema>
 
@@ -45,15 +49,20 @@ export function AddUreaForm({ onClose }: AddUreaFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
-      quantityKg: 0,
+      bags45: 0,
+      bags50: 0,
       description: '',
     },
   })
 
-  const quantityKg = watch('quantityKg')
-  const bags = quantityKg ? (quantityKg / KG_PER_BAG).toFixed(2) : '0.00'
-  const isHighQuantity = quantityKg > 20000
-  const isExtremeQuantity = quantityKg > 50000
+  const bags45 = watch('bags45') || 0
+  const bags50 = watch('bags50') || 0
+  const kg45 = bags45 * KG_PER_BAG.KG_45
+  const kg50 = bags50 * KG_PER_BAG.KG_50
+  const totalKg = kg45 + kg50
+  const totalBags = bags45 + bags50
+  const isHighQuantity = totalKg > 20000
+  const isExtremeQuantity = totalKg > 50000
 
   const onSubmit = async (data: FormData) => {
     setError('')
@@ -67,9 +76,9 @@ export function AddUreaForm({ onClose }: AddUreaFormProps) {
           date: data.date,
           type: 'ADD_UREA',
           category: 'UREA',
-          quantity: data.quantityKg,
-          unit: 'KG',
-          description: data.description || `Added ${data.quantityKg}kg Urea`,
+          bags45: data.bags45,
+          bags50: data.bags50,
+          description: data.description || undefined,
         }),
       })
 
@@ -114,53 +123,78 @@ export function AddUreaForm({ onClose }: AddUreaFormProps) {
             )}
           </div>
 
-          <div>
-            <Label htmlFor="quantityKg">
-              Quantity (kg)
-              {isHighQuantity && <span className="text-red-600 ml-1">⚠️ HIGH QUANTITY</span>}
-            </Label>
-            <Input
-              id="quantityKg"
-              type="number"
-              step="0.1"
-              placeholder="e.g., 5000, 10000"
-              {...register('quantityKg', { valueAsNumber: true })}
-              className={isExtremeQuantity ? 'border-red-500' : isHighQuantity ? 'border-amber-500' : ''}
-            />
-            {errors.quantityKg && (
-              <p className="text-sm text-red-500 mt-1">{errors.quantityKg.message}</p>
-            )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="bags45">45kg bags</Label>
+              <Input
+                id="bags45"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="0"
+                {...register('bags45', { valueAsNumber: true })}
+              />
+              {bags45 > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">= {kg45} kg</p>
+              )}
+            </div>
 
-            {isHighQuantity && (
-              <Alert variant="destructive" className="mt-2">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>⚠️ Verify Quantity:</strong> You entered {quantityKg.toLocaleString()} kg.
-                  {isExtremeQuantity ? ' This exceeds typical range!' : ' Please confirm this is correct.'}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">Equivalent:</span> {bags} bags
-                <span className="text-xs text-blue-600 ml-1">({KG_PER_BAG}kg per bag)</span>
-              </p>
-              {isHighQuantity && (
-                <label className="flex items-center mt-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={confirmed}
-                    onChange={(e) => setConfirmed(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="ml-2 text-sm text-blue-900">
-                    ✓ I confirm this quantity is correct
-                  </span>
-                </label>
+            <div>
+              <Label htmlFor="bags50">50kg bags</Label>
+              <Input
+                id="bags50"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="0"
+                {...register('bags50', { valueAsNumber: true })}
+              />
+              {bags50 > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">= {kg50} kg</p>
               )}
             </div>
           </div>
+
+          {errors.bags45 && (
+            <p className="text-sm text-red-500 -mt-2">{errors.bags45.message}</p>
+          )}
+          {errors.bags50 && (
+            <p className="text-sm text-red-500 -mt-2">{errors.bags50.message}</p>
+          )}
+
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-800">
+              <span className="font-medium">Total:</span> {totalBags} bag{totalBags !== 1 ? 's' : ''} ={' '}
+              <span className="font-semibold">{totalKg.toLocaleString()} kg</span>
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              {bags45} × 45kg + {bags50} × 50kg
+            </p>
+          </div>
+
+          {isHighQuantity && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>⚠️ Verify Quantity:</strong> You entered {totalKg.toLocaleString()} kg.
+                {isExtremeQuantity ? ' This exceeds typical range!' : ' Please confirm this is correct.'}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {isHighQuantity && (
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span className="ml-2 text-sm text-blue-900">
+                ✓ I confirm this quantity is correct
+              </span>
+            </label>
+          )}
 
           <div>
             <Label htmlFor="description">Description (Optional)</Label>
@@ -178,7 +212,7 @@ export function AddUreaForm({ onClose }: AddUreaFormProps) {
             </Button>
             <Button
               type="submit"
-              disabled={loading || (isHighQuantity && !confirmed)}
+              disabled={loading || (isHighQuantity && !confirmed) || totalBags === 0}
             >
               {loading ? 'Adding...' : 'Add Urea'}
             </Button>

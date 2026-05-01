@@ -92,6 +92,7 @@ model StockTransaction {
   category        StockCategory
   quantity        Float                // Can be negative for consumption
   unit            StockUnit
+  bagSize         BagSize?             // Set on UREA rows; null otherwise
   description     String?
   runningTotal    Float
   createdAt       DateTime             @default(now())
@@ -100,6 +101,7 @@ model StockTransaction {
   @@index([date])
   @@index([type])
   @@index([category])
+  @@index([category, bagSize])
 }
 
 enum StockTransactionType {
@@ -120,6 +122,11 @@ enum StockUnit {
   KG
   LITERS
   BAGS
+}
+
+enum BagSize {
+  KG_45
+  KG_50
 }
 
 // ============================================

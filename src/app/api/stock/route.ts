@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { z } from 'zod'
-import { StockTransactionType, StockCategory, StockUnit, BucketType } from '@prisma/client'
-import { BUCKET_SIZES, UREA_PER_BATCH_KG, LITERS_PER_BATCH } from '@/types'
+import { StockTransactionType, StockCategory, StockUnit, BagSize, BucketType, Prisma } from '@prisma/client'
+import { BUCKET_SIZES, LITERS_PER_BATCH, KG_PER_BAG } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,10 +12,16 @@ const createStockSchema = z.object({
   date: z.string().transform(str => new Date(str)),
   type: z.nativeEnum(StockTransactionType),
   category: z.nativeEnum(StockCategory),
-  quantity: z.number(),
-  unit: z.nativeEnum(StockUnit),
+  quantity: z.number().optional(),
+  unit: z.nativeEnum(StockUnit).optional(),
   description: z.string().optional(),
   batchCount: z.number().optional(),
+  // ADD_UREA: how many bags of each size are being added
+  bags45: z.number().int().nonnegative().optional(),
+  bags50: z.number().int().nonnegative().optional(),
+  // PRODUCE_BATCH: how many bags of each size were consumed
+  produceBags45: z.number().int().nonnegative().optional(),
+  produceBags50: z.number().int().nonnegative().optional(),
 })
 
 // GET - Fetch stock transactions and summary
@@ -41,7 +47,8 @@ export async function GET(request: NextRequest) {
         transactions: [],
         summary: {
           ureaKg: 0,
-          ureaBags: 0,
+          ureaBags45: 0,
+          ureaBags50: 0,
           ureaCansProduceL: 0,
           freeDEF: 0,
           bucketsInLiters: 0,
@@ -155,7 +162,19 @@ export async function POST(request: NextRequest) {
 // Handle production batch (Urea → Free DEF)
 async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
   const batchCount = data.batchCount || 1
-  const totalUreaNeeded = UREA_PER_BATCH_KG * batchCount
+  const bags45 = data.produceBags45 || 0
+  const bags50 = data.produceBags50 || 0
+
+  if (bags45 === 0 && bags50 === 0) {
+    return NextResponse.json(
+      { success: false, message: 'Specify at least one bag (45kg or 50kg) used for production' },
+      { status: 400 }
+    )
+  }
+
+  const ureaFrom45 = bags45 * KG_PER_BAG.KG_45
+  const ureaFrom50 = bags50 * KG_PER_BAG.KG_50
+  const totalUreaConsumed = ureaFrom45 + ureaFrom50
   const totalLitersProduced = LITERS_PER_BATCH * batchCount
 
   // Check if this is backdated for UREA
@@ -174,25 +193,23 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
   })
   const isFreeDEFBackdated = latestFreeDEFTransaction && data.date < latestFreeDEFTransaction.date
 
-  // Use correct baseline stock for UREA
-  const ureaStock = isUreaBackdated
-    ? await getStockAtDate(StockCategory.UREA, data.date)
-    : await getCurrentStock(StockCategory.UREA)
-
-  // Check if enough Urea is available
-  if (ureaStock < totalUreaNeeded) {
+  // Per-size stock check (must have ≥ requested bags of each size)
+  const onHand = await getUreaBagsOnHandAt(isUreaBackdated ? data.date : null)
+  if (bags45 > onHand.bags45 || bags50 > onHand.bags50) {
     return NextResponse.json(
       {
         success: false,
-        message: `Insufficient Urea. Need ${totalUreaNeeded}kg for ${batchCount} batch${batchCount !== 1 ? 'es' : ''}, have ${ureaStock}kg`,
-        currentStock: ureaStock,
+        message: `Insufficient Urea bags. Have ${onHand.bags45} × 45kg + ${onHand.bags50} × 50kg; need ${bags45} × 45kg + ${bags50} × 50kg`,
+        currentStock: onHand,
       },
       { status: 400 }
     )
   }
 
-  // Calculate new running totals
-  const ureaRunningTotal = ureaStock - totalUreaNeeded
+  // Use correct baseline stock for UREA (in kg)
+  const ureaStock = isUreaBackdated
+    ? await getStockAtDate(StockCategory.UREA, data.date)
+    : await getCurrentStock(StockCategory.UREA)
 
   // Use correct baseline stock for FREE_DEF
   const freeDEFStock = isFreeDEFBackdated
@@ -200,20 +217,48 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
     : await getCurrentStock(StockCategory.FREE_DEF)
   const freeDEFRunningTotal = freeDEFStock + totalLitersProduced
 
-  // Create transactions in a transaction block
-  // Note: Finished Goods = Free DEF, so we don't create separate FINISHED_GOODS transaction
-  const transactions = await prisma.$transaction([
-    prisma.stockTransaction.create({
-      data: {
-        date: data.date,
-        type: 'PRODUCE_BATCH',
-        category: 'UREA',
-        quantity: -totalUreaNeeded,
-        unit: 'KG',
-        description: `Production: ${batchCount} batch${batchCount !== 1 ? 'es' : ''} (-${totalUreaNeeded}kg Urea)`,
-        runningTotal: ureaRunningTotal,
-      },
-    }),
+  // Build UREA debit rows (one per non-zero bag size). Sequential running totals.
+  const batchLabel = `${batchCount} batch${batchCount !== 1 ? 'es' : ''}`
+  let ureaRunningTotal = ureaStock
+  const writes: Prisma.PrismaPromise<unknown>[] = []
+
+  if (bags45 > 0) {
+    ureaRunningTotal -= ureaFrom45
+    writes.push(
+      prisma.stockTransaction.create({
+        data: {
+          date: data.date,
+          type: 'PRODUCE_BATCH',
+          category: 'UREA',
+          quantity: -ureaFrom45,
+          unit: 'KG',
+          bagSize: 'KG_45',
+          description: `Production: ${batchLabel} (-${bags45} × 45kg = -${ureaFrom45}kg Urea)`,
+          runningTotal: ureaRunningTotal,
+        },
+      })
+    )
+  }
+
+  if (bags50 > 0) {
+    ureaRunningTotal -= ureaFrom50
+    writes.push(
+      prisma.stockTransaction.create({
+        data: {
+          date: data.date,
+          type: 'PRODUCE_BATCH',
+          category: 'UREA',
+          quantity: -ureaFrom50,
+          unit: 'KG',
+          bagSize: 'KG_50',
+          description: `Production: ${batchLabel} (-${bags50} × 50kg = -${ureaFrom50}kg Urea)`,
+          runningTotal: ureaRunningTotal,
+        },
+      })
+    )
+  }
+
+  writes.push(
     prisma.stockTransaction.create({
       data: {
         date: data.date,
@@ -221,11 +266,13 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
         category: 'FREE_DEF',
         quantity: totalLitersProduced,
         unit: 'LITERS',
-        description: `Production: ${batchCount} batch${batchCount !== 1 ? 'es' : ''} (+${totalLitersProduced}L Free DEF)`,
+        description: `Production: ${batchLabel} (+${totalLitersProduced}L Free DEF)`,
         runningTotal: freeDEFRunningTotal,
       },
-    }),
-  ])
+    })
+  )
+
+  const transactions = await prisma.$transaction(writes)
 
   // If backdated, recalculate all subsequent running totals for affected categories
   if (isUreaBackdated) {
@@ -237,13 +284,20 @@ async function handleProduceBatch(data: z.infer<typeof createStockSchema>) {
 
   return NextResponse.json({
     success: true,
-    message: `Produced ${totalLitersProduced}L Free DEF (${batchCount} batch${batchCount !== 1 ? 'es' : ''}) using ${totalUreaNeeded}kg Urea`,
+    message: `Produced ${totalLitersProduced}L Free DEF (${batchLabel}) using ${totalUreaConsumed}kg Urea (${bags45} × 45kg + ${bags50} × 50kg)`,
     transactions,
   })
 }
 
 // Handle filling buckets (auto-called from inventory)
 async function handleFillBuckets(data: z.infer<typeof createStockSchema>) {
+  if (data.quantity === undefined) {
+    return NextResponse.json(
+      { success: false, message: 'quantity is required for FILL_BUCKETS' },
+      { status: 400 }
+    )
+  }
+
   // Check if this is backdated
   const latestTransaction = await prisma.stockTransaction.findFirst({
     where: { category: StockCategory.FREE_DEF },
@@ -299,6 +353,13 @@ async function handleFillBuckets(data: z.infer<typeof createStockSchema>) {
 
 // Handle selling buckets (auto-called from inventory)
 async function handleSellBuckets(data: z.infer<typeof createStockSchema>) {
+  if (data.quantity === undefined) {
+    return NextResponse.json(
+      { success: false, message: 'quantity is required for SELL_BUCKETS' },
+      { status: 400 }
+    )
+  }
+
   // Check if this is backdated
   const latestTransaction = await prisma.stockTransaction.findFirst({
     where: { category: StockCategory.FREE_DEF },
@@ -367,6 +428,85 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
     ? await getStockAtDate(data.category, data.date)
     : await getCurrentStock(data.category)
 
+  // ADD_UREA: split into per-size rows based on bags45 / bags50 inputs
+  if (data.type === 'ADD_UREA') {
+    const bags45 = data.bags45 || 0
+    const bags50 = data.bags50 || 0
+
+    if (bags45 === 0 && bags50 === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Enter at least one bag (45kg or 50kg)' },
+        { status: 400 }
+      )
+    }
+
+    const kg45 = bags45 * KG_PER_BAG.KG_45
+    const kg50 = bags50 * KG_PER_BAG.KG_50
+
+    let runningTotal = currentStock
+    const writes: Prisma.PrismaPromise<unknown>[] = []
+
+    if (bags45 > 0) {
+      runningTotal += kg45
+      writes.push(
+        prisma.stockTransaction.create({
+          data: {
+            date: data.date,
+            type: 'ADD_UREA',
+            category: 'UREA',
+            quantity: kg45,
+            unit: 'KG',
+            bagSize: 'KG_45',
+            description: data.description
+              ? `${data.description} (${bags45} × 45kg)`
+              : `Added ${bags45} × 45kg bags (${kg45}kg)`,
+            runningTotal,
+          },
+        })
+      )
+    }
+
+    if (bags50 > 0) {
+      runningTotal += kg50
+      writes.push(
+        prisma.stockTransaction.create({
+          data: {
+            date: data.date,
+            type: 'ADD_UREA',
+            category: 'UREA',
+            quantity: kg50,
+            unit: 'KG',
+            bagSize: 'KG_50',
+            description: data.description
+              ? `${data.description} (${bags50} × 50kg)`
+              : `Added ${bags50} × 50kg bags (${kg50}kg)`,
+            runningTotal,
+          },
+        })
+      )
+    }
+
+    const transactions = await prisma.$transaction(writes)
+
+    if (isBackdated) {
+      await recalculateRunningTotalsAfter(StockCategory.UREA, data.date, currentStock)
+    }
+
+    return NextResponse.json({
+      success: true,
+      transactions,
+      message: `Added ${kg45 + kg50}kg Urea (${bags45} × 45kg + ${bags50} × 50kg)`,
+    })
+  }
+
+  // Beyond ADD_UREA, the regular path requires quantity + unit
+  if (data.quantity === undefined || data.unit === undefined) {
+    return NextResponse.json(
+      { success: false, message: 'quantity and unit are required for this transaction type' },
+      { status: 400 }
+    )
+  }
+
   // For selling Free DEF, check if enough stock is available
   if (data.type === 'SELL_FREE_DEF' && data.quantity < 0) {
     const quantityToSell = Math.abs(data.quantity)
@@ -426,7 +566,7 @@ async function handleRegularTransaction(data: z.infer<typeof createStockSchema>)
     })
   }
 
-  // Regular transaction (ADD_UREA)
+  // Other regular transactions
   const transaction = await prisma.stockTransaction.create({
     data: {
       date: data.date,
@@ -503,10 +643,38 @@ async function recalculateRunningTotalsAfter(
   }
 }
 
+// Aggregate UREA bags on hand per size. If `beforeDate` is provided, returns
+// the on-hand counts as of that date (exclusive); otherwise returns current.
+async function getUreaBagsOnHandAt(beforeDate: Date | null): Promise<{ bags45: number; bags50: number }> {
+  const where: Prisma.StockTransactionWhereInput = { category: StockCategory.UREA }
+  if (beforeDate) where.date = { lt: beforeDate }
+
+  const grouped = await prisma.stockTransaction.groupBy({
+    by: ['bagSize'],
+    where,
+    _sum: { quantity: true },
+  })
+
+  let kg45 = 0
+  let kg50 = 0
+  for (const row of grouped) {
+    const sum = row._sum.quantity ?? 0
+    if (row.bagSize === BagSize.KG_45) kg45 = sum
+    else if (row.bagSize === BagSize.KG_50) kg50 = sum
+    else kg45 += sum // legacy rows with null bagSize fall under 45kg
+  }
+
+  return {
+    bags45: Math.round(kg45 / KG_PER_BAG.KG_45),
+    bags50: Math.round(kg50 / KG_PER_BAG.KG_50),
+  }
+}
+
 // Helper function to calculate stock summary
 async function calculateStockSummary() {
   const ureaKg = await getCurrentStock(StockCategory.UREA)
   const freeDEF = await getCurrentStock(StockCategory.FREE_DEF)
+  const { bags45, bags50 } = await getUreaBagsOnHandAt(null)
 
   // Calculate buckets in liters from inventory (for display purposes - they're empty)
   const bucketsInLiters = await calculateBucketsInLiters()
@@ -516,7 +684,8 @@ async function calculateStockSummary() {
 
   return {
     ureaKg,
-    ureaBags: Number((ureaKg / 45).toFixed(2)),
+    ureaBags45: bags45,
+    ureaBags50: bags50,
     ureaCansProduceL: Math.floor(ureaKg / 360) * 1000,
     freeDEF,
     bucketsInLiters,
