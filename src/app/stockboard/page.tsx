@@ -131,8 +131,8 @@ export default function StockBoardPage() {
         {showProduceForm && (
           <ProduceBatchForm
             onClose={handleFormClose}
-            currentBags45={summary?.ureaBags45 || 0}
-            currentBags50={summary?.ureaBags50 || 0}
+            currentKg45={summary?.ureaKg45 || 0}
+            currentKg50={summary?.ureaKg50 || 0}
           />
         )}
       </div>
