@@ -35,9 +35,15 @@ export function StockOverviewCard({ summary }: StockOverviewCardProps) {
                 <div className="grid grid-cols-2 gap-2 text-sm text-amber-700 pt-1">
                   <div className="bg-amber-100 rounded px-2 py-1">
                     <span className="font-semibold">{summary.ureaBags45}</span> × 45kg
+                    {summary.ureaRemainder45 > 0 && (
+                      <span className="text-xs text-amber-600"> + {summary.ureaRemainder45}kg open</span>
+                    )}
                   </div>
                   <div className="bg-amber-100 rounded px-2 py-1">
                     <span className="font-semibold">{summary.ureaBags50}</span> × 50kg
+                    {summary.ureaRemainder50 > 0 && (
+                      <span className="text-xs text-amber-600"> + {summary.ureaRemainder50}kg open</span>
+                    )}
                   </div>
                 </div>
               </div>

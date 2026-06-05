@@ -126,7 +126,7 @@ export function StockTransactionLog({ transactions }: StockTransactionLogProps) 
                                 {ureaUsedTotal.toFixed(1)} kg
                                 {(ureaUsed45 > 0 || ureaUsed50 > 0) && (
                                   <span className="text-xs text-muted-foreground ml-1">
-                                    ({Math.round(ureaUsed45 / 45)} × 45kg + {Math.round(ureaUsed50 / 50)} × 50kg)
+                                    ({ureaUsed45.toFixed(1)}kg 45kg-type + {ureaUsed50.toFixed(1)}kg 50kg-type)
                                   </span>
                                 )}
                               </span>

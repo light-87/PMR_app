@@ -22,23 +22,32 @@ const formSchema = z
   .object({
     date: z.string().min(1, 'Date is required'),
     batchCount: z.number().min(1, 'Must produce at least 1 batch').max(100, 'Maximum 100 batches at once'),
-    produceBags45: z.number().int().min(0, 'Must be 0 or more').max(2000, 'Too many'),
-    produceBags50: z.number().int().min(0, 'Must be 0 or more').max(2000, 'Too many'),
+    produceKg45: z.number().min(0, 'Must be 0 or more').max(100000, 'Too much'),
+    produceKg50: z.number().min(0, 'Must be 0 or more').max(100000, 'Too much'),
   })
-  .refine((data) => data.produceBags45 + data.produceBags50 > 0, {
-    message: 'Specify at least one bag (45kg or 50kg)',
-    path: ['produceBags45'],
+  .refine((data) => data.produceKg45 + data.produceKg50 > 0, {
+    message: 'Enter the Urea kg used (45kg-type and/or 50kg-type)',
+    path: ['produceKg45'],
   })
 
 type FormData = z.infer<typeof formSchema>
 
 interface ProduceBatchFormProps {
   onClose: () => void
-  currentBags45: number
-  currentBags50: number
+  currentKg45: number
+  currentKg50: number
 }
 
-export function ProduceBatchForm({ onClose, currentBags45, currentBags50 }: ProduceBatchFormProps) {
+// Format raw kg as "X × NNkg + Mkg open (totalkg)"
+function describeStock(kg: number, bagKg: number): string {
+  const bags = Math.floor(kg / bagKg)
+  const remainder = Math.round((kg - bags * bagKg) * 10) / 10
+  const parts = [`${bags} × ${bagKg}kg`]
+  if (remainder > 0) parts.push(`${remainder}kg open`)
+  return `${parts.join(' + ')} (${Math.round(kg * 10) / 10}kg)`
+}
+
+export function ProduceBatchForm({ onClose, currentKg45, currentKg50 }: ProduceBatchFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -52,17 +61,17 @@ export function ProduceBatchForm({ onClose, currentBags45, currentBags50 }: Prod
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       batchCount: 1,
-      produceBags45: 0,
-      produceBags50: 0,
+      produceKg45: 0,
+      produceKg50: 0,
     },
   })
 
   const batchCount = watch('batchCount') || 1
-  const produceBags45 = watch('produceBags45') || 0
-  const produceBags50 = watch('produceBags50') || 0
+  const produceKg45 = watch('produceKg45') || 0
+  const produceKg50 = watch('produceKg50') || 0
 
-  const ureaFrom45 = produceBags45 * KG_PER_BAG.KG_45
-  const ureaFrom50 = produceBags50 * KG_PER_BAG.KG_50
+  const ureaFrom45 = produceKg45
+  const ureaFrom50 = produceKg50
   const totalUreaConsumed = ureaFrom45 + ureaFrom50
   const totalLitersProduced = LITERS_PER_BATCH * batchCount
   const expectedKg = UREA_PER_BATCH_KG * batchCount
@@ -70,14 +79,14 @@ export function ProduceBatchForm({ onClose, currentBags45, currentBags50 }: Prod
   const deviationPct = expectedKg === 0 ? 0 : Math.abs(deviation) / expectedKg
   const showDeviationWarning = totalUreaConsumed > 0 && deviationPct > 0.05
 
-  const has45 = produceBags45 <= currentBags45
-  const has50 = produceBags50 <= currentBags50
+  const has45 = produceKg45 <= currentKg45
+  const has50 = produceKg50 <= currentKg50
   const hasEnough = has45 && has50
 
   const onSubmit = async (data: FormData) => {
     if (!hasEnough) {
       setError(
-        `Insufficient bags. Have ${currentBags45} × 45kg + ${currentBags50} × 50kg; need ${data.produceBags45} × 45kg + ${data.produceBags50} × 50kg`
+        `Insufficient Urea. Have ${currentKg45}kg of 45kg-type + ${currentKg50}kg of 50kg-type; need ${data.produceKg45}kg + ${data.produceKg50}kg`
       )
       return
     }
@@ -94,8 +103,8 @@ export function ProduceBatchForm({ onClose, currentBags45, currentBags50 }: Prod
           type: 'PRODUCE_BATCH',
           category: 'UREA',
           batchCount: data.batchCount,
-          produceBags45: data.produceBags45,
-          produceBags50: data.produceBags50,
+          produceKg45: data.produceKg45,
+          produceKg50: data.produceKg50,
         }),
       })
 
@@ -119,7 +128,7 @@ export function ProduceBatchForm({ onClose, currentBags45, currentBags50 }: Prod
         <DialogHeader>
           <DialogTitle>Produce Batch</DialogTitle>
           <DialogDescription>
-            Enter batches produced and exact bags used. 1 batch typically uses {UREA_PER_BATCH_KG}kg Urea → {LITERS_PER_BATCH}L Free DEF.
+            Enter batches produced and the exact Urea kg used. 1 batch typically uses {UREA_PER_BATCH_KG}kg Urea → {LITERS_PER_BATCH}L Free DEF. Leftover kg stays in the open bag for next time.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,40 +156,40 @@ export function ProduceBatchForm({ onClose, currentBags45, currentBags50 }: Prod
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="produceBags45">45kg bags used</Label>
+              <Label htmlFor="produceKg45">Urea used — 45kg-type (kg)</Label>
               <Input
-                id="produceBags45"
+                id="produceKg45"
                 type="number"
                 min="0"
-                step="1"
+                step="any"
                 placeholder="0"
-                {...register('produceBags45', { valueAsNumber: true })}
+                {...register('produceKg45', { valueAsNumber: true })}
                 className={!has45 ? 'border-red-500' : ''}
               />
               <p className={`text-xs mt-1 ${has45 ? 'text-muted-foreground' : 'text-red-600 font-medium'}`}>
-                On hand: {currentBags45} bag{currentBags45 !== 1 ? 's' : ''}
+                On hand: {describeStock(currentKg45, KG_PER_BAG.KG_45)}
               </p>
             </div>
 
             <div>
-              <Label htmlFor="produceBags50">50kg bags used</Label>
+              <Label htmlFor="produceKg50">Urea used — 50kg-type (kg)</Label>
               <Input
-                id="produceBags50"
+                id="produceKg50"
                 type="number"
                 min="0"
-                step="1"
+                step="any"
                 placeholder="0"
-                {...register('produceBags50', { valueAsNumber: true })}
+                {...register('produceKg50', { valueAsNumber: true })}
                 className={!has50 ? 'border-red-500' : ''}
               />
               <p className={`text-xs mt-1 ${has50 ? 'text-muted-foreground' : 'text-red-600 font-medium'}`}>
-                On hand: {currentBags50} bag{currentBags50 !== 1 ? 's' : ''}
+                On hand: {describeStock(currentKg50, KG_PER_BAG.KG_50)}
               </p>
             </div>
           </div>
 
-          {errors.produceBags45 && (
-            <p className="text-sm text-red-500 -mt-2">{errors.produceBags45.message}</p>
+          {errors.produceKg45 && (
+            <p className="text-sm text-red-500 -mt-2">{errors.produceKg45.message}</p>
           )}
 
           {/* Stock Check */}
@@ -193,18 +202,18 @@ export function ProduceBatchForm({ onClose, currentBags45, currentBags50 }: Prod
               )}
               <div className="flex-1">
                 <p className={`font-medium ${hasEnough ? 'text-green-900' : 'text-red-900'}`}>
-                  {hasEnough ? 'Ready to Produce' : 'Insufficient Bags'}
+                  {hasEnough ? 'Ready to Produce' : 'Insufficient Urea'}
                 </p>
                 <div className="mt-2 space-y-1 text-sm">
                   <p className={hasEnough ? 'text-green-700' : 'text-red-700'}>
                     Urea consumed: <span className="font-semibold">{totalUreaConsumed} kg</span>
                     <span className="text-xs ml-1">
-                      ({produceBags45} × 45kg + {produceBags50} × 50kg)
+                      ({ureaFrom45}kg 45kg-type + {ureaFrom50}kg 50kg-type)
                     </span>
                   </p>
                   {hasEnough && (
                     <p className="text-green-600">
-                      Remaining after: <span className="font-semibold">{currentBags45 - produceBags45} × 45kg + {currentBags50 - produceBags50} × 50kg</span>
+                      Remaining after: <span className="font-semibold">{describeStock(currentKg45 - produceKg45, KG_PER_BAG.KG_45)} · {describeStock(currentKg50 - produceKg50, KG_PER_BAG.KG_50)}</span>
                     </p>
                   )}
                 </div>

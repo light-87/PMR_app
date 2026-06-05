@@ -248,8 +248,15 @@ export interface StockTransaction {
 
 export interface StockSummary {
   ureaKg: number
+  // Raw kg on hand per bag size (source of truth, fed to the produce form)
+  ureaKg45: number
+  ureaKg50: number
+  // Full bags on hand (floor) per size
   ureaBags45: number
   ureaBags50: number
+  // Kg left in the currently-open bag per size (carried to the next production)
+  ureaRemainder45: number
+  ureaRemainder50: number
   ureaCansProduceL: number
   freeDEF: number
   bucketsInLiters: number
