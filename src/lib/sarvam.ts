@@ -57,7 +57,7 @@ export async function sarvamSTT(
   return response.json()
 }
 
-// Chat completion using Sarvam-M (OpenAI-compatible)
+// Chat completion using Sarvam-30B (OpenAI-compatible)
 export async function sarvamChat(
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
   apiKey: string,
@@ -66,7 +66,7 @@ export async function sarvamChat(
   const client = getSarvamChatClient(apiKey)
 
   const completion = await client.chat.completions.create({
-    model: 'sarvam-m',
+    model: 'sarvam-30b',
     messages,
     temperature: options.temperature ?? 0.3,
     max_tokens: options.maxTokens ?? 2048,
