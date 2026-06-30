@@ -72,17 +72,28 @@ export async function verifySession(): Promise<SessionData | null> {
   }
 }
 
-// Verify employee session AND extend cookie expiry by another year (sliding window).
-// Call from /api/staff/* routes so each authenticated request keeps the session alive.
-export async function verifyEmployeeSession(): Promise<SessionData | null> {
+// Read-only employee session check. Does NOT mutate cookies, so it is safe to
+// call from Server Components (layouts/pages) where cookie writes are forbidden.
+export async function readEmployeeSession(): Promise<SessionData | null> {
   const session = await verifySession()
   if (!session || session.role !== 'EMPLOYEE' || !session.employeeId) return null
+  return session
+}
+
+// Verify employee session AND extend cookie expiry by another year (sliding window).
+// MUST be called only from Route Handlers / Server Actions — it writes a cookie,
+// which throws if invoked during a Server Component render. Use readEmployeeSession()
+// in layouts/pages. The /api/staff/* routes call this so each authenticated request
+// keeps the session alive.
+export async function verifyEmployeeSession(): Promise<SessionData | null> {
+  const session = await readEmployeeSession()
+  if (!session) return null
 
   // Re-issue cookie with fresh 1y expiry. JWT itself stays valid until its own exp;
-  // we re-mint when within the last 60 days so we don't churn on every request.
+  // we re-mint once more than 60 days have elapsed so we don't churn on every request.
   const sixtyDays = 60 * 24 * 60 * 60 * 1000
   if (session.expiresAt - Date.now() < EMPLOYEE_TTL_SECONDS * 1000 - sixtyDays) {
-    await createEmployeeSession(session.employeeId)
+    await createEmployeeSession(session.employeeId!)
   }
   return session
 }

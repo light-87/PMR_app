@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { verifyEmployeeSession } from '@/lib/auth'
+import { readEmployeeSession } from '@/lib/auth'
 import { StaffBottomNav } from './components/StaffBottomNav'
 import { PushPermissionPrompt } from './components/PushPermissionPrompt'
 
@@ -15,7 +15,9 @@ export default async function StaffLayout({ children }: { children: React.ReactN
     return <>{children}</>
   }
 
-  const session = await verifyEmployeeSession()
+  // Read-only check — never mutate cookies in a Server Component render.
+  // Sliding-window renewal happens in the /api/staff/* route handlers.
+  const session = await readEmployeeSession()
   if (!session) redirect('/staff/login')
 
   return (
