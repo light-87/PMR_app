@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.salaryPayment.findMany({
         where: { employeeId: { in: empIds } },
-        select: { employeeId: true, amountPaid: true, paidDate: true },
+        select: { employeeId: true, amountPaid: true, paidDate: true, type: true },
       }),
       prisma.salaryPayment.findMany({
         where: { paidDate: { gte: trendStart } },

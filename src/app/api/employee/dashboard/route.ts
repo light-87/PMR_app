@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.salaryPayment.findMany({
         where: { employeeId: { in: allEmpIds } },
-        select: { employeeId: true, amountPaid: true },
+        select: { employeeId: true, amountPaid: true, type: true },
       }),
     ])
 

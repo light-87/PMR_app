@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select'
 import { cn, formatINR } from '@/lib/utils'
 
-export type PaymentType = 'REGULAR' | 'ADVANCE' | 'ADJUSTMENT'
+export type PaymentType = 'REGULAR' | 'ADVANCE' | 'ADJUSTMENT' | 'BONUS'
 export type Account =
   | 'CASH'
   | 'PRASHANT_GAYDHANE'
@@ -60,6 +60,7 @@ const TYPES: { value: PaymentType; label: string; helper: string }[] = [
   { value: 'REGULAR', label: 'Regular', helper: 'Monthly salary' },
   { value: 'ADVANCE', label: 'Advance', helper: 'Money up front' },
   { value: 'ADJUSTMENT', label: 'Adjust', helper: 'Correction · ± allowed' },
+  { value: 'BONUS', label: 'Bonus', helper: 'Extra · on top' },
 ]
 
 export function PaySheet({ open, ctx, onOpenChange, onSuccess }: Props) {
@@ -193,7 +194,9 @@ export function PaySheet({ open, ctx, onOpenChange, onSuccess }: Props) {
                   }}
                 />
               </div>
-              <div className="flex flex-wrap gap-1.5 mt-2">
+              {/* Hidden for BONUS — these shortcuts fill in salary figures, which would be
+                  the wrong number to hand over as a bonus. */}
+              <div className={cn('flex flex-wrap gap-1.5 mt-2', type === 'BONUS' && 'hidden')}>
                 <button
                   type="button"
                   onClick={() => setAmount(owedThisMonth.toFixed(2))}
@@ -225,7 +228,9 @@ export function PaySheet({ open, ctx, onOpenChange, onSuccess }: Props) {
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Type
               </label>
-              <div className="grid grid-cols-3 gap-1.5 mt-1.5 p-1 rounded-lg bg-slate-100">
+              {/* 2×2 rather than a 4-wide row: at 360px four cells cannot fit the helper
+                  text, and the modal caps at max-w-md so a 2-col grid reads well there too. */}
+              <div className="grid grid-cols-2 gap-1.5 mt-1.5 p-1 rounded-lg bg-slate-100">
                 {TYPES.map((t) => (
                   <button
                     key={t.value}

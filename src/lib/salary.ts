@@ -53,29 +53,46 @@ export function earningsByMonth(
 export type RunningBalance = {
   totalEarned: DecimalT
   totalPaid: DecimalT
+  totalBonus: DecimalT
   openingBalance: DecimalT
   balance: DecimalT // positive = pending owed to employee, negative = overpaid
   byMonth: MonthlyEarnings[]
+}
+
+// BONUS is money given on top of earned salary, so it must never settle a due. Counting
+// it as `paid` would push the balance negative and make the employee look overpaid on
+// salary they are still owed. Every balance calculation filters through this.
+export function isSalarySettlingPayment(type: SalaryPayment['type']): boolean {
+  return type !== 'BONUS'
 }
 
 // `openingBalance` is the migration carry-over (positive = owed to employee at time of
 // onboarding, negative = advance already given). Defaults to 0 for new employees.
 export function runningBalance(
   attendance: Pick<AttendanceRecord, 'date' | 'status' | 'approved'>[],
-  payments: Pick<SalaryPayment, 'amountPaid'>[],
+  payments: Pick<SalaryPayment, 'amountPaid' | 'type'>[],
   monthlySalary: DecimalT | string | number,
   openingBalance: DecimalT | string | number = 0
 ): RunningBalance {
   const opening = new Decimal(openingBalance as Prisma.Decimal.Value)
   const byMonth = earningsByMonth(attendance, monthlySalary)
   const totalEarned = byMonth.reduce((acc, m) => acc.add(m.earned), new Decimal(0))
-  const totalPaid = payments.reduce(
-    (acc, p) => acc.add(new Decimal(p.amountPaid as Prisma.Decimal.Value)),
-    new Decimal(0)
-  )
+
+  let totalPaid = new Decimal(0)
+  let totalBonus = new Decimal(0)
+  for (const p of payments) {
+    const amount = new Decimal(p.amountPaid as Prisma.Decimal.Value)
+    if (isSalarySettlingPayment(p.type)) {
+      totalPaid = totalPaid.add(amount)
+    } else {
+      totalBonus = totalBonus.add(amount)
+    }
+  }
+
   return {
     totalEarned,
     totalPaid,
+    totalBonus,
     openingBalance: opening,
     balance: opening.add(totalEarned).sub(totalPaid),
     byMonth,

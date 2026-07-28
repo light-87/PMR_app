@@ -13,7 +13,7 @@ const schema = z.object({
   employeeId: z.string().min(1),
   month: z.string().regex(/^\d{4}-\d{2}$/, 'month must be YYYY-MM'),
   amountPaid: z.number(), // can be negative for adjustments
-  type: z.enum(['REGULAR', 'ADVANCE', 'ADJUSTMENT']).default('REGULAR'),
+  type: z.enum(['REGULAR', 'ADVANCE', 'ADJUSTMENT', 'BONUS']).default('REGULAR'),
   account: z.enum(['CASH', 'PRASHANT_GAYDHANE', 'PMR', 'KPG_SAVING', 'KP_ENTERPRISES']).default('CASH'),
   notes: z.string().max(500).optional(),
 })
@@ -67,6 +67,8 @@ export async function POST(request: NextRequest) {
           amount: new Prisma.Decimal(amountPaid),
           account,
           type: 'EXPENSE',
+          // Bonuses share the LABOUR PAYMENT label so expense reports that group on this
+          // name stay whole. The bonus/salary split lives on the SalaryPayment row.
           name: 'LABOUR PAYMENT',
         },
       })
@@ -96,11 +98,15 @@ export async function POST(request: NextRequest) {
     if (employee.pushSubscription && typeof employee.pushSubscription === 'object') {
       const sub = employee.pushSubscription as unknown as PushSubscriptionJSON
       const periodHuman = formatPeriodHuman(month)
+      const isBonus = type === 'BONUS'
       const r = await sendPush(sub, {
-        title: 'Salary Credited',
-        body: `₹${Number(amountPaid).toLocaleString('en-IN')} credited for ${periodHuman}.`,
+        title: isBonus ? 'Bonus Credited' : 'Salary Credited',
+        body: isBonus
+          ? `₹${Number(amountPaid).toLocaleString('en-IN')} bonus credited for ${periodHuman}.`
+          : `₹${Number(amountPaid).toLocaleString('en-IN')} credited for ${periodHuman}.`,
         url: '/staff/salary',
-        tag: `salary-${month}`,
+        // Distinct tag so a bonus push never replaces the salary push for the same month.
+        tag: isBonus ? `bonus-${month}` : `salary-${month}`,
       })
       if (r.ok) {
         pushStatus = 'sent'

@@ -7,7 +7,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 
 type Payment = {
   id: string
-  type: 'REGULAR' | 'ADVANCE' | 'ADJUSTMENT'
+  type: 'REGULAR' | 'ADVANCE' | 'ADJUSTMENT' | 'BONUS'
   monthString: string
   daysInMonth: number
   daysAttended: number
@@ -120,7 +120,14 @@ export default function StaffSalaryPage() {
                 <div>
                   <div className="text-sm font-medium inline-flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" /> {p.monthString}
-                    <span className="text-[10px] uppercase font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    <span
+                      className={cn(
+                        'text-[10px] uppercase font-medium px-1.5 py-0.5 rounded',
+                        p.type === 'BONUS'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-muted text-muted-foreground'
+                      )}
+                    >
                       {p.type}
                     </span>
                   </div>

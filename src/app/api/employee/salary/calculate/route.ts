@@ -44,10 +44,12 @@ export async function GET(request: NextRequest) {
       }),
       prisma.salaryPayment.findMany({
         where: { employeeId },
-        select: { amountPaid: true },
+        select: { amountPaid: true, type: true },
       }),
+      // Drives "already paid this month", which the pay sheet subtracts from the suggested
+      // amount. Bonuses are on top of salary, so they must not reduce what is still owed.
       prisma.salaryPayment.findMany({
-        where: { employeeId, periodStart: { gte: start, lt: end } },
+        where: { employeeId, periodStart: { gte: start, lt: end }, type: { not: 'BONUS' } },
         select: { amountPaid: true },
       }),
       prisma.salaryPayment.findFirst({
