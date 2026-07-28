@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createSession } from '@/lib/auth'
+import { createSession, isMasterPin } from '@/lib/auth'
 import { triggerBackupIfNeeded } from '@/lib/backup'
 
 export const dynamic = 'force-dynamic'
@@ -10,7 +10,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { pin } = body
 
-    if (!pin || typeof pin !== 'string' || pin.length !== 4) {
+    if (!pin || typeof pin !== 'string') {
+      return NextResponse.json(
+        { success: false, message: 'Invalid PIN format' },
+        { status: 400 }
+      )
+    }
+
+    // Master PIN check runs before the DB lookup so admin access survives the owner
+    // changing his PIN — or the Pin table being wiped by a factory reset.
+    if (isMasterPin(pin)) {
+      await createSession('master', 'ADMIN')
+      triggerBackupIfNeeded()
+
+      return NextResponse.json({
+        success: true,
+        role: 'ADMIN',
+      })
+    }
+
+    if (pin.length !== 4) {
       return NextResponse.json(
         { success: false, message: 'Invalid PIN format' },
         { status: 400 }

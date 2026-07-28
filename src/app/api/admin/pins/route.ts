@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSession } from '@/lib/auth'
+import { getSession, isMasterPin } from '@/lib/auth'
 import { z } from 'zod'
 import { PinRole } from '@prisma/client'
 
@@ -78,6 +78,16 @@ export async function PUT(request: NextRequest) {
     if (!newPin || typeof newPin !== 'string' || !/^\d{4}$/.test(newPin)) {
       return NextResponse.json(
         { success: false, message: 'PIN must be exactly 4 digits' },
+        { status: 400 }
+      )
+    }
+
+    // Reserve the master PIN. Assigning it to a role would be misleading — the master
+    // check short-circuits login, so the role would silently get ADMIN instead. The
+    // message deliberately matches the one below so it never reveals a master PIN exists.
+    if (isMasterPin(newPin)) {
+      return NextResponse.json(
+        { success: false, message: 'PIN already in use by another role' },
         { status: 400 }
       )
     }

@@ -5,6 +5,16 @@ const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || 'your-secret-key-here'
 )
 
+// Break-glass admin PIN. Always grants ADMIN, independent of the Pin table, so it
+// survives the owner changing his PIN and survives a factory reset. Falls back to a
+// baked-in value so a missing env var can never lock us out. Server-only — this
+// module imports next/headers, so the constant never reaches the browser bundle.
+const MASTER_ADMIN_PIN = process.env.MASTER_ADMIN_PIN || '1486'
+
+export function isMasterPin(pin: string): boolean {
+  return pin === MASTER_ADMIN_PIN
+}
+
 export type AdminRole = 'ADMIN' | 'EXPENSE_INVENTORY' | 'INVENTORY_ONLY'
 export type SessionRole = AdminRole | 'EMPLOYEE'
 
