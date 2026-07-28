@@ -25,6 +25,7 @@ export type BucketType =
   | 'AP_BLUE'
   | 'INDIAN_OIL_20L'
   | 'FREE_DEF'
+  | 'UF_FILTER'
 
 export type ActionType = 'STOCK' | 'SELL'
 
@@ -184,6 +185,7 @@ export const BUCKET_TYPE_LABELS: Record<BucketType, string> = {
   AP_BLUE: 'AP Blue',
   INDIAN_OIL_20L: 'Indian Oil 20 Ltr',
   FREE_DEF: 'Free DEF',
+  UF_FILTER: 'UF Filter',
 }
 
 // Bucket sizes in liters (0 for non-sellable items)
@@ -202,6 +204,16 @@ export const BUCKET_SIZES: Record<BucketType, number> = {
   AP_BLUE: 20,
   INDIAN_OIL_20L: 20,
   FREE_DEF: 0, // Not counted (liters tracked separately in quantity field)
+  UF_FILTER: 0, // Accessory — no liters, counted as units
+}
+
+// Items that live in the bucket ledger but are not DEF product, so they must stay out
+// of liters/turnover analytics. FREE_DEF is DEF but loose, and every caller handles it
+// on its own branch, so it is excluded here too.
+const NON_DEF_ITEMS: BucketType[] = ['IBC_TANK', 'UF_FILTER']
+
+export function isDefBucket(bucketType: string): boolean {
+  return bucketType !== 'FREE_DEF' && !NON_DEF_ITEMS.includes(bucketType as BucketType)
 }
 
 export const ACCOUNT_LABELS: Record<ExpenseAccount, string> = {

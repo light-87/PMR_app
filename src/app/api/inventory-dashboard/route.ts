@@ -28,7 +28,7 @@ import type {
   ProductionForecastData,
   FreeDefCustomerData,
 } from '@/types'
-import { BUCKET_SIZES, LITERS_PER_BATCH } from '@/types'
+import { BUCKET_SIZES, LITERS_PER_BATCH, isDefBucket } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -158,15 +158,13 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Filter transactions: separate buckets from FREE_DEF/IBC_TANK
-    const bucketTransactions = transactions.filter(
-      (t) => t.bucketType !== 'FREE_DEF' && t.bucketType !== 'IBC_TANK'
-    )
-    const previousBucketTransactions = previousTransactions.filter(
-      (t) => t.bucketType !== 'FREE_DEF' && t.bucketType !== 'IBC_TANK'
+    // Filter transactions: separate DEF buckets from FREE_DEF and non-DEF items
+    const bucketTransactions = transactions.filter((t) => isDefBucket(t.bucketType))
+    const previousBucketTransactions = previousTransactions.filter((t) =>
+      isDefBucket(t.bucketType)
     )
 
-    // Calculate bucket analytics (excluding FREE_DEF and IBC_TANK)
+    // Calculate bucket analytics (DEF buckets only)
     const overview = calculateOverviewMetrics(bucketTransactions, previousBucketTransactions)
     const movementTrends = calculateMovementTrends(bucketTransactions, startDate, endDate, view)
     const forecast = calculateForecast(bucketTransactions, endDate, view)
@@ -538,10 +536,9 @@ async function calculateReorderRecommendations(): Promise<ReorderRecommendation[
     consumption[sale.bucketType] = Math.abs(Number(sale._sum.quantity) || 0)
   })
 
-  // Generate recommendations for all bucket types (exclude FREE_DEF and IBC_TANK)
-  const allBucketTypes = Object.keys(currentStocks).filter(
-    (bt) => bt !== 'FREE_DEF' && bt !== 'IBC_TANK'
-  )
+  // Generate recommendations for DEF bucket types only — reorder logic is driven by
+  // DEF consumption velocity, which is meaningless for non-DEF items.
+  const allBucketTypes = Object.keys(currentStocks).filter((bt) => isDefBucket(bt))
 
   for (const bucketType of allBucketTypes) {
     const currentStock = currentStocks[bucketType] || 0
@@ -672,10 +669,10 @@ async function calculateFreeDefOverview(
 
   // Calculate bucket consumption (all bucket sales × bucket sizes)
   const bucketSales = currentTransactions.filter(
-    (t) => t.action === 'SELL' && t.bucketType !== 'FREE_DEF' && t.bucketType !== 'IBC_TANK'
+    (t) => t.action === 'SELL' && isDefBucket(t.bucketType)
   )
   const prevBucketSales = previousTransactions.filter(
-    (t) => t.action === 'SELL' && t.bucketType !== 'FREE_DEF' && t.bucketType !== 'IBC_TANK'
+    (t) => t.action === 'SELL' && isDefBucket(t.bucketType)
   )
 
   let consumedByBuckets = 0
@@ -785,7 +782,7 @@ function calculateFreeDefFlow(
           if (t.action === 'SELL') {
             if (t.bucketType === 'FREE_DEF') {
               soldDirect += Math.abs(Number(t.quantity))
-            } else if (t.bucketType !== 'IBC_TANK') {
+            } else if (isDefBucket(t.bucketType)) {
               const bucketSize = BUCKET_SIZES[t.bucketType as BucketType] || 0
               consumed += Math.abs(Number(t.quantity)) * bucketSize
             }
@@ -817,7 +814,7 @@ function calculateFreeDefFlow(
           if (t.action === 'SELL') {
             if (t.bucketType === 'FREE_DEF') {
               soldDirect += Math.abs(Number(t.quantity))
-            } else if (t.bucketType !== 'IBC_TANK') {
+            } else if (isDefBucket(t.bucketType)) {
               const bucketSize = BUCKET_SIZES[t.bucketType as BucketType] || 0
               consumed += Math.abs(Number(t.quantity)) * bucketSize
             }
@@ -862,8 +859,7 @@ async function calculateProductionForecast(
   // Bucket consumption
   const bucketSales = transactions.filter(
     (t) => t.action === 'SELL' &&
-           t.bucketType !== 'FREE_DEF' &&
-           t.bucketType !== 'IBC_TANK' &&
+           isDefBucket(t.bucketType) &&
            new Date(t.date) >= thirtyDaysAgo
   )
 
@@ -976,7 +972,7 @@ function calculateFreeDefCustomers(
   const bucketSalesByType: { [key: string]: number } = {}
 
   transactions.forEach((t) => {
-    if (t.action === 'SELL' && t.bucketType !== 'FREE_DEF' && t.bucketType !== 'IBC_TANK') {
+    if (t.action === 'SELL' && isDefBucket(t.bucketType)) {
       const bucketType = t.bucketType
       if (!bucketSalesByType[bucketType]) {
         bucketSalesByType[bucketType] = 0

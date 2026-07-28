@@ -74,6 +74,7 @@ enum BucketType {
   AP_BLUE
   INDIAN_OIL_20L
   FREE_DEF
+  UF_FILTER
 }
 
 enum ActionType {
