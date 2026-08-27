@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Key, Upload } from 'lucide-react'
+import { Key, Upload, Presentation, ExternalLink, Copy, Check, FileDown } from 'lucide-react'
 import { BackupManager } from './components/BackupManager'
 import { RestoreManager } from './components/RestoreManager'
 import { BulkUploadForm } from './components/BulkUploadForm'
@@ -22,6 +22,17 @@ export default function AdminPage() {
   })
   const [updating, setUpdating] = useState<string | null>(null)
   const [message, setMessage] = useState('')
+  const [deckLinkCopied, setDeckLinkCopied] = useState(false)
+
+  const handleCopyDeckLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/deck`)
+      setDeckLinkCopied(true)
+      setTimeout(() => setDeckLinkCopied(false), 2000)
+    } catch {
+      setMessage('Could not copy the link — open the deck and copy from the address bar')
+    }
+  }
 
   const handlePinChange = (role: keyof typeof pins, value: string) => {
     setPins(prev => ({
@@ -116,6 +127,45 @@ export default function AdminPage() {
         </Card>
 
         <FixProductionUserCount />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Presentation className="h-5 w-5" />
+              AdBlue / DEF Presentation
+            </CardTitle>
+            <CardDescription>
+              The slide deck on how DEF works and how PMR makes it. Anyone with the
+              link can open it — no login needed, so it is safe to send to customers.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <a href="/deck" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open deck
+                </a>
+              </Button>
+              <Button variant="outline" onClick={handleCopyDeckLink}>
+                {deckLinkCopied ? (
+                  <><Check className="h-4 w-4 mr-2" />Link copied</>
+                ) : (
+                  <><Copy className="h-4 w-4 mr-2" />Copy share link</>
+                )}
+              </Button>
+              <Button variant="outline" asChild>
+                <a href="/deck/PMR-AdBlue-DEF-Deck.pdf" target="_blank" rel="noopener noreferrer">
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Download PDF
+                </a>
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Arrow keys or click to move between slides. Press F for fullscreen.
+            </p>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

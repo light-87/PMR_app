@@ -97,5 +97,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|logo.png|manifest.json|sw.js|models).*)'],
+  // `deck` is excluded so the public AdBlue/DEF slide deck stays shareable
+  // without a session. It contains no customer data.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|logo.png|manifest.json|sw.js|models|deck).*)'],
 }

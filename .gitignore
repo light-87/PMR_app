@@ -44,3 +44,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# deck build output — the served copies live in public/deck/
+deck/PMR-AdBlue-DEF-Deck.html
+deck/PMR-AdBlue-DEF-Deck.pdf
