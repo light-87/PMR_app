@@ -48,9 +48,9 @@ body{
 }
 
 /* ── Stage: fixed 1600×900 design surface, scaled to fit ───── */
-#viewport{width:100vw;height:100vh;display:grid;place-items:center;overflow:hidden}
+#viewport{position:relative;width:100vw;height:100vh;overflow:hidden}
 #stage{
-  position:relative;width:1600px;height:900px;flex:none;
+  position:absolute;left:50%;top:50%;width:1600px;height:900px;flex:none;
   background:var(--void);
   transform-origin:center center;
   overflow:hidden;
@@ -605,6 +605,58 @@ h1 .orange{color:var(--nox)}
 .rig.on .leds circle:nth-child(3){animation-delay:-1s}
 .rig.on .sight{animation:blip 2.4s ease-in-out infinite}
 .rig.on .motorfan{animation:churn 1.4s ease-in-out infinite;transform-origin:330px 85px}
+
+
+/* ═══════════ Small screens ═══════════ */
+/* The stage keeps its 1600x900 geometry everywhere; only the scale and the
+   size of the smallest type change. */
+#rotateHint{display:none}
+html[data-sideways="1"] #hint{display:none}
+html[data-sideways="1"] #rotateHint{
+  display:flex;align-items:center;gap:9px;
+  position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:30;
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:#8C9BA8;background:rgba(7,11,16,.9);border:1px solid var(--line);
+  padding:10px 16px;border-radius:2px;white-space:nowrap;
+  animation:hintPulse 2.6s ease-in-out infinite;
+}
+html[data-sideways="1"] #rotateHint span{font-size:15px;color:var(--adblue)}
+@keyframes hintPulse{0%,100%{opacity:.6}50%{opacity:1}}
+
+/* Coarser type once the stage is scaled below ~0.62 */
+#stage[data-compact="1"] .lead{font-size:25px;line-height:1.48}
+#stage[data-compact="1"] .eyebrow{font-size:17px}
+#stage[data-compact="1"] .note{font-size:16px;line-height:1.5}
+#stage[data-compact="1"] .chip{font-size:15px;padding:9px 15px}
+#stage[data-compact="1"] .counter{font-size:16px}
+#stage[data-compact="1"] #s1 .kicker{font-size:17px}
+#stage[data-compact="1"] #s1 .sub{font-size:25px}
+#stage[data-compact="1"] #s1 .credit-label{font-size:14px}
+#stage[data-compact="1"] #s1 .credit-name{font-size:23px}
+#stage[data-compact="1"] #s1 .designer{font-size:15px}
+#stage[data-compact="1"] .wordmark{font-size:19px}
+#stage[data-compact="1"] #s2 .sfig .t{font-size:17px;line-height:1.4}
+#stage[data-compact="1"] #s2 .ch{font-size:14px;padding:10px 8px}
+#stage[data-compact="1"] #s2 .chain-lbl{font-size:13px}
+#stage[data-compact="1"] .cyl .clbl{font-size:15px}
+#stage[data-compact="1"] .tl .band{font-size:15px}
+#stage[data-compact="1"] .tl .tag{font-size:14px}
+#stage[data-compact="1"] .tl .yr{font-size:15px}
+#stage[data-compact="1"] .tl .annot{font-size:20px}
+#stage[data-compact="1"] .window .sc{font-size:16px}
+#stage[data-compact="1"] .window .rej{font-size:14px}
+#stage[data-compact="1"] .mix .seg u{font-size:14px}
+#stage[data-compact="1"] .scr .lbl{font-size:15px}
+#stage[data-compact="1"] #s5 .phase{font-size:16px}
+#stage[data-compact="1"] .plant .readlbl{font-size:15px}
+#stage[data-compact="1"] .rigtext p{font-size:20px;line-height:1.45}
+#stage[data-compact="1"] .rigspec{font-size:14px}
+#stage[data-compact="1"] .step .sn{font-size:14px}
+#stage[data-compact="1"] .step .st{font-size:17px}
+#stage[data-compact="1"] #s6 .seal-list li{font-size:14px}
+#stage[data-compact="1"] #s6 .seal-k{font-size:11px}
+#stage[data-compact="1"] #s6 .contact .k{font-size:14px}
+#stage[data-compact="1"] #s6 .contact .v{font-size:20px}
 
 /* ── Nav affordance ────────────────────────────────────────── */
 #hint{
@@ -1211,6 +1263,7 @@ h1 .orange{color:var(--nox)}
 </div><!-- /viewport -->
 
 <div id="hint"><kbd>←</kbd> <kbd>→</kbd> to move · <kbd>F</kbd> fullscreen</div>
+<div id="rotateHint"><span>↻</span> Turn your phone sideways</div>
 
 <script>
 (function(){
@@ -1247,8 +1300,18 @@ h1 .orange{color:var(--nox)}
   }
 
   function fit(){
-    var s = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
-    stage.style.transform = 'scale(' + s + ')';
+    var vw = window.innerWidth, vh = window.innerHeight;
+    // A 16:9 stage in a portrait phone shrinks to a useless strip. Turn it onto
+    // the long edge instead; rotating the handset lands back in the normal branch.
+    var sideways = vh > vw && Math.min(vw, vh) < 820;
+    var s = sideways
+      ? Math.min(vh / 1600, vw / 900)
+      : Math.min(vw / 1600, vh / 900);
+    stage.style.transform = 'translate(-50%,-50%) ' + (sideways ? 'rotate(90deg) ' : '') + 'scale(' + s + ')';
+    document.documentElement.setAttribute('data-sideways', sideways ? '1' : '0');
+    // Below roughly half size the 11-17px type stops being readable, so the
+    // stage switches to a coarser scale for the small stuff.
+    stage.setAttribute('data-compact', s < 0.62 ? '1' : '0');
   }
   window.addEventListener('resize', fit);
   fit();
