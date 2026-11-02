@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { Toaster } from "@/components/Toaster";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "PMR Industries — Inventory, Expenses & Staff",
@@ -40,6 +41,7 @@ export default function RootLayout({
         <RegisterServiceWorker />
         {children}
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
